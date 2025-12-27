@@ -32,17 +32,10 @@ pipeline {
         stage('3. Run ETL') {
             steps {
                 echo "Ejecutando ETL en el entorno virtual..."
-                
                 withCredentials([string(credentialsId: 'ID_DE_TU_CREDENCIAL', variable: 'SECURE_TOKEN')]) {
                     bat """
-                    :: Importante: Se activa el venv y se ejecuta en la misma sesión de comandos
-                    call venv\\Scripts\\activate && ^
-                    python main.py ^
-                        --url "${params.CSV_URL}" ^
-                        --mapping "${params.MAPPING}" ^
-                        --device_id "${params.DEVICE_ID}" ^
-                        --api_key "${params.API_KEY}" ^
-                        --token "%SECURE_TOKEN%"
+                    @echo off
+                    call venv\\Scripts\\activate && python main.py --url "${params.CSV_URL}" --mapping "${params.MAPPING}" --device_id "${params.DEVICE_ID}" --api_key "${params.API_KEY}" --token "%SECURE_TOKEN%"
                     """
                 }
             }
