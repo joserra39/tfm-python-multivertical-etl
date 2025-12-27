@@ -33,7 +33,7 @@ pipeline {
             steps {
                 echo "Ejecutando ETL en el entorno virtual..."
                 
-                withCredentials([string(credentialsId: 'github-token-tfm', variable: 'SECURE_TOKEN')]) {
+                withCredentials([string(credentialsId: 'ID_DE_TU_CREDENCIAL', variable: 'SECURE_TOKEN')]) {
                     bat """
                     :: Importante: Se activa el venv y se ejecuta en la misma sesión de comandos
                     call venv\\Scripts\\activate && ^
