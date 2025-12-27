@@ -1,14 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'CSV_URL', defaultValue: '', description: 'URL del CSV')
-        string(name: 'MAPPING', defaultValue: '{}', description: 'Mapeo JSON')
-        string(name: 'DEVICE_ID', defaultValue: '', description: 'ID del dispositivo')
-        string(name: 'API_KEY', defaultValue: '', description: 'API Key del IoTAgent')
-        password(name: 'AUTH_TOKEN', description: 'Token de seguridad')
-    }
-
     stages {
         stage('1. Checkout') {
             steps {
