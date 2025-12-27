@@ -32,10 +32,10 @@ La flexibilidad del motor reside en los parámetros configurables definidos en e
 
 ## 📁 Estructura del Repositorio
 ```text
-├── main.py              # Orquestador principal y lógica de parámetros.
 ├── modules/
 │   ├── extractor.py     # Gestión de peticiones HTTP y descarga de archivos.
 │   ├── transformer.py   # Lógica de limpieza y mapeo de datos.
 │   └── loader.py        # Cliente API para el IoTAgent.
 ├── Jenkinsfile          # Definición del pipeline (venv, seguridad y ejecución).
+├── main.py              # Orquestador principal y lógica de parámetros.
 └── requirements.txt     # Dependencias del proyecto.
