@@ -20,15 +20,11 @@ pipeline {
             steps {
                 echo 'Creando entorno virtual y cargando dependencias...'
                 bat """
-                :: Crear el entorno si no existe
+                @echo off
                 if not exist venv (
                     python -m venv venv
                 )
-                
-                :: Activar e instalar requirements
-                call venv\\Scripts\\activate && ^
-                python -m pip install --upgrade pip && ^
-                pip install -r requirements.txt
+                call venv\\Scripts\\activate && python -m pip install --upgrade pip && pip install -r requirements.txt
                 """
             }
         }
