@@ -1,5 +1,8 @@
 import argparse
 import sys
+import os
+import json
+from modules.transformer import transform_csv_to_ngsi
 
 def test_pipeline():
     parser = argparse.ArgumentParser(description="Test de Pipeline ETL")
@@ -24,5 +27,32 @@ def test_pipeline():
     print(f"Token recibido: {token_display}")
     print("--- PRUEBA COMPLETADA CON ÉXITO ---")
 
+def main():
+    # Jenkins pasa el path como primer argumento: python main.py /ruta/datos
+    if len(sys.argv) < 2:
+        print("Error: Se requiere el path del directorio.")
+        sys.exit(1)
+        
+    directory_path = sys.argv[1]
+    all_ngsi_entities = []
+
+    if not os.path.isdir(directory_path):
+        print(f"Error: {directory_path} no es un directorio válido.")
+        sys.exit(1)
+
+    for filename in os.listdir(directory_path):
+        if filename.endswith(".csv"):
+            print(f"Procesando {filename}...")
+            file_path = os.path.join(directory_path, filename)
+            entities = transform_csv_to_ngsi(file_path)
+            all_ngsi_entities.extend(entities)
+
+    # Guardar resultado o enviar a un Context Broker
+    with open('output_ngsi.json', 'w', encoding='utf-8') as f:
+        json.dump(all_ngsi_entities, f, indent=4, ensure_ascii=False)
+    
+    print(f"Proceso finalizado. {len(all_ngsi_entities)} entidades generadas.")
+
 if __name__ == "__main__":
-    test_pipeline()
+    # test_pipeline()
+    main()
