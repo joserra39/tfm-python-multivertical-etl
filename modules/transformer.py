@@ -78,37 +78,34 @@ ESTACIONES_INFO = {
 def transform_csv_to_ngsi(file_path):
     df = pd.read_csv(file_path, sep=';')
     
-    # 1. Convertir columnas H01-H24 de ancho a largo
+    # Normalizar columnas (Ancho a Largo)
     id_vars = ['PROVINCIA', 'MUNICIPIO', 'ESTACION', 'MAGNITUD', 'ANO', 'MES', 'DIA']
     h_cols = [f'H{i:02d}' for i in range(1, 25)]
     v_cols = [f'V{i:02d}' for i in range(1, 25)]
     
-    # Melt de valores (H)
     df_values = df.melt(id_vars=id_vars, value_vars=h_cols, var_name='HORA', value_name='VALOR')
     df_values['HORA'] = df_values['HORA'].str.replace('H', '').astype(int)
     
-    # Melt de validaciones (V)
     df_valid = df.melt(id_vars=id_vars, value_vars=v_cols, var_name='HORA_V', value_name='VALIDO')
     df_valid['HORA'] = df_valid['HORA_V'].str.replace('V', '').astype(int)
     
-    # Combinar valores y validaciones, filtrar solo los válidos ('V')
-    df_long = pd.merge(df_values, df_valid[['ESTACION', 'ANO', 'MES', 'DIA', 'HORA', 'VALIDO']], 
-                       on=['ESTACION', 'ANO', 'MES', 'DIA', 'HORA'])
+    df_long = pd.merge(df_values, df_valid, on=id_vars + ['HORA'])
     df_long = df_long[df_long['VALIDO'] == 'V']
 
-    # 2. Agrupar por Estación-Fecha-Hora para consolidar magnitudes
     entities = []
-    grouped = df_long.groupby(['ESTACION', 'ANO', 'MES', 'DIA', 'HORA'])
+    # Agrupamos por Estación, Año, Mes, Día y Hora para consolidar contaminantes
+    grouped = df_long.groupby(['PROVINCIA', 'MUNICIPIO', 'ESTACION', 'ANO', 'MES', 'DIA', 'HORA'])
 
-    for (est_id, ano, mes, dia, hora), group in grouped:
-        est_str = f"28079{est_id:03d}"
-        info = ESTACIONES_INFO.get(est_str, {"name": "Unknown", "coords": [0, 0]})
+    for (prov, muni, esta, ano, mes, dia, hora), group in grouped:
+        # Generar ID de 8 dígitos: 28 + 079 + XXX
+        est_id_8 = f"{prov:02d}{muni:03d}{esta:03d}"
+        info = ESTACIONES_INFO.get(est_id_8, {"name": f"Estación {est_id_8}", "coords": [0.0, 0.0]})
         
-        # Formatear fecha ISO8601
+        # Fecha ISO (Restamos 1 a la hora porque H01 es la franja 00:00-01:00)
         date_str = f"{ano:04d}-{mes:02d}-{dia:02d}T{hora-1:02d}:00:00"
         
         entity = {
-            "id": f"Madrid-{est_str}",
+            "id": f"Madrid-{est_id_8}",
             "type": "AirQualityObserved",
             "dateObserved": {"value": date_str},
             "location": {
@@ -124,23 +121,19 @@ def transform_csv_to_ngsi(file_path):
                 }
             },
             "source": {"value": "http://datos.madrid.es"},
-            "refPointOfInterest": {"type": "Relationship", "value": est_str}
+            "refPointOfInterest": {"type": "Relationship", "value": est_id_8}
         }
         
+        # Añadir contaminantes
         for _, row in group.iterrows():
             mag_id = row['MAGNITUD']
             if mag_id in MAGNITUDES_MAP:
-                attr_name, unit_code = MAGNITUDES_MAP[mag_id]
-                
+                attr_name, unit = MAGNITUDES_MAP[mag_id]
                 entity[attr_name] = {
                     "value": float(row['VALOR']),
-                    "metadata": {
-                        "unitCode": {
-                            "value": unit_code
-                        }
-                    }
+                    "metadata": {"unitCode": {"value": unit}}
                 }
         
         entities.append(entity)
-    
+        
     return entities
