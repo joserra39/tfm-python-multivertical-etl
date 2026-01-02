@@ -33,7 +33,7 @@ La flexibilidad del motor reside en los parámetros configurables definidos en e
 ## 📁 Estructura del Repositorio
 ```text
 ├── modules/
-│   ├── vertival
+│   ├── vertical
 │   │   ├── extractor.py     # Gestión de peticiones HTTP y descarga de archivos.
 │   │   ├── transformer.py   # Lógica de limpieza y mapeo de datos.
 │   └── loader.py        # Cliente API para el IoTAgent.
