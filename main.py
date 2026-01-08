@@ -1,9 +1,10 @@
-import argparse
 import sys
 import os
 import json
 import time
-from modules.transformer import transform_csv_to_ngsi
+import importlib
+from modules.common.loader import OrionLoader
+
 
 def test_pipeline():
     parser = argparse.ArgumentParser(description="Test de Pipeline ETL")
@@ -28,56 +29,70 @@ def test_pipeline():
     print(f"Token recibido: {token_display}")
     print("--- PRUEBA COMPLETADA CON ÉXITO ---")
 
-def save_chunks(entities, output_base_dir, chunk_size=50):
-    # Crear el directorio 'outputs' dentro del path proporcionado
+def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
     output_path = os.path.join(output_base_dir, "outputs")
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-        print(f"Directorio creado: {output_path}")
 
-    # Dividir la lista de entidades en trozos de 50
     for i in range(0, len(entities), chunk_size):
         chunk = entities[i:i + chunk_size]
-        
-        # Generar nombre de archivo con Timestamp Unix
-        timestamp = int(time.time() * 1000) + (i // chunk_size) # Evitar colisión
-        file_name = f"air_quality_{timestamp}.json"
+        timestamp = int(time.time() * 1000) + (i // chunk_size)
+        # Incluimos el nombre de la vertical en el fichero
+        file_name = f"{vertical_name}_{timestamp}.json"
         full_file_path = os.path.join(output_path, file_name)
         
         with open(full_file_path, 'w', encoding='utf-8') as f:
             json.dump(chunk, f, indent=4, ensure_ascii=False)
-        
-        print(f"Generado: {file_name} con {len(chunk)} entidades.")
+        print(f"Generado: {file_name}")
 
 def main():
-    if len(sys.argv) < 2:
-        print("Error: Se requiere el path del directorio de datos.")
+    # Ahora esperamos 2 parámetros: PATH y VERTICAL
+    if len(sys.argv) < 3:
+        print("Uso: python main.py <PATH_DATOS> <NOMBRE_VERTICAL>")
+        print("Ejemplo: python main.py ./datos airquality")
         sys.exit(1)
         
     directory_path = sys.argv[1]
+    vertical_name = sys.argv[2]
     all_entities = []
 
-    if not os.path.isdir(directory_path):
-        print(f"Error: {directory_path} no es un directorio válido.")
+    # --- LÓGICA DE CARGA DINÁMICA ---
+    try:
+        # Importa el módulo modules.airquality (o el que pases por parámetro)
+        module = importlib.import_module(f"modules.{vertical_name}.transformer")
+        # Obtenemos la función de transformación del módulo cargado
+        transform_func = getattr(module, "transform_csv_to_ngsi")
+    except ImportError:
+        print(f"Error: No existe el trasformador para la vertical '{vertical_name}'")
+        sys.exit(1)
+    except AttributeError:
+        print(f"Error: El módulo '{vertical_name}' no tiene la función 'transform_csv_to_ngsi'")
         sys.exit(1)
 
-    # Procesar todos los archivos CSV
+    # Procesar archivos
+    if not os.path.isdir(directory_path):
+        print(f"Error: {directory_path} no es un directorio.")
+        sys.exit(1)
+
     for filename in os.listdir(directory_path):
         if filename.endswith(".csv"):
             file_path = os.path.join(directory_path, filename)
-            print(f"--- Procesando {filename} ---")
+            print(f"Procesando {filename} con vertical: {vertical_name}")
             try:
-                entities = transform_csv_to_ngsi(file_path)
+                # Usamos la función cargada dinámicamente
+                entities = transform_func(file_path)
                 all_entities.extend(entities)
             except Exception as e:
-                print(f"Error procesando {filename}: {e}")
+                print(f"Error en {filename}: {e}")
 
-    # Guardar en ficheros de 50 entidades
     if all_entities:
-        save_chunks(all_entities, directory_path)
-        print(f"\nProceso completado. Total entidades: {len(all_entities)}")
+        if os.getenv("ORION_URL"):
+            loader = OrionLoader(os.getenv("ORION_URL"))
+            loader.upsert_entities(all_entities)
+        else:
+            save_chunks(all_entities, directory_path, vertical_name)
     else:
-        print("No se encontraron entidades válidas para procesar.")
+        print("No se generaron entidades.")
 
 if __name__ == "__main__":
     # test_pipeline()
