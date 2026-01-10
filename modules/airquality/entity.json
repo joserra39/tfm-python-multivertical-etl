@@ -1,0 +1,36 @@
+{
+  "id": "Madrid-{station_id}",
+  "type": "AirQualityObserved",
+
+  "dateObserved": {
+    "type": "DateTime",
+    "value": "{dateObserved}"
+  },
+
+  "location": {
+    "type": "geo:json",
+    "value": {
+      "type": "Point",
+      "coordinates": "{coordinates}"
+    }
+  },
+
+  "address": {
+    "type": "PostalAddress",
+    "value": {
+      "addressCountry": "ES",
+      "addressLocality": "Madrid",
+      "streetAddress": "{station_name}"
+    }
+  },
+
+  "source": {
+    "type": "Text",
+    "value": "http://datos.madrid.es"
+  },
+
+  "refPointOfInterest": {
+    "type": "Relationship",
+    "value": "{station_id}"
+  }
+}

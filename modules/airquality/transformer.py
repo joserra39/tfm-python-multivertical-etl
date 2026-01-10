@@ -1,6 +1,15 @@
 import pandas as pd
 import json
 import os
+from modules.common.entity_builder import (
+    load_entity_template,
+    build_entity_from_template
+)
+from modules.common.time_utils import build_iso_datetime
+
+ENTITY_TEMPLATE = load_entity_template(
+    os.path.join(os.path.dirname(__file__), "entity.json")
+)
 
 # Mapeo de magnitudes (Código CSV -> (Magnitud, Cód. Unidad))
 # Cód. Unidad:
@@ -99,30 +108,27 @@ def transform_csv_to_ngsi(file_path):
     for (prov, muni, esta, ano, mes, dia, hora), group in grouped:
         # Generar ID de 8 dígitos: 28 + 079 + XXX
         est_id_8 = f"{prov:02d}{muni:03d}{esta:03d}"
-        info = ESTACIONES_INFO.get(est_id_8, {"name": f"Estación {est_id_8}", "coords": [0.0, 0.0]})
+        station_info = ESTACIONES_INFO.get(est_id_8, {"name": f"Estación {est_id_8}", "coords": [0.0, 0.0]})
         
         # Fecha ISO (Restamos 1 a la hora porque H01 es la franja 00:00-01:00)
-        date_str = f"{ano:04d}-{mes:02d}-{dia:02d}T{hora-1:02d}:00:00"
-        
-        entity = {
-            "id": f"Madrid-{est_id_8}",
-            "type": "AirQualityObserved",
-            "dateObserved": {"value": date_str},
-            "location": {
-                "type": "geo:json",
-                "value": {"type": "Point", "coordinates": info["coords"]}
-            },
-            "address": {
-                "type": "PostalAddress",
-                "value": {
-                    "addressCountry": "ES",
-                    "addressLocality": "Madrid",
-                    "streetAddress": info["name"]
-                }
-            },
-            "source": {"value": "http://datos.madrid.es"},
-            "refPointOfInterest": {"type": "Relationship", "value": est_id_8}
-        }
+        # date_str = f"{ano:04d}-{mes:02d}-{dia:02d}T{hora-1:02d}:00:00"
+
+        date_observed = build_iso_datetime(
+            year=ano,
+            month=mes,
+            day=dia,
+            hour=hora
+        )
+
+        entity = build_entity_from_template(
+            ENTITY_TEMPLATE,
+            {
+                "station_id": est_id_8,
+                "dateObserved": date_observed,
+                "coordinates": station_info["coords"],
+                "station_name": station_info["name"]
+            }
+        )
         
         # Añadir contaminantes
         for _, row in group.iterrows():
@@ -130,8 +136,11 @@ def transform_csv_to_ngsi(file_path):
             if mag_id in MAGNITUDES_MAP:
                 attr_name, unit = MAGNITUDES_MAP[mag_id]
                 entity[attr_name] = {
+                    "type": "Number",
                     "value": float(row['VALOR']),
-                    "metadata": {"unitCode": {"value": unit}}
+                    "metadata": {
+                        "unitCode": {"value": unit}
+                    }
                 }
         
         entities.append(entity)
