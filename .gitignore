@@ -1,3 +1,4 @@
 env
 output_ngsi.json
 **/__pycache__/
+.env

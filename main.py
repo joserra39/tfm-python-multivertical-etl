@@ -3,97 +3,155 @@ import os
 import json
 import time
 import importlib
-from modules.common.loader import OrionLoader
+import logging
+import tc_etl_lib as tc
+from modules.common.auth_keycloak import KeycloakAuthManager
 
+# --------------------------------------------------
+# Load .env only in local environments
+# --------------------------------------------------
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-def test_pipeline():
-    parser = argparse.ArgumentParser(description="Test de Pipeline ETL")
-    
-    # Definimos los parámetros que esperamos de Jenkins
-    parser.add_argument("--url", help="URL del CSV")
-    parser.add_argument("--mapping", help="Estructura JSON")
-    parser.add_argument("--device_id", help="ID del dispositivo")
-    parser.add_argument("--api_key", help="API Key")
-    parser.add_argument("--token", help="Token de seguridad")
+# --------------------------------------------------
+# Logging configuration
+# --------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
-    args = parser.parse_args()
-
-    print("--- INICIO DE PRUEBA DE PIPELINE ---")
-    print(f"Versión de Python en el nodo: {sys.version}")
-    print(f"URL recibida: {args.url}")
-    print(f"Mapping recibido: {args.mapping}")
-    print(f"Device ID: {args.device_id}")
-    print(f"API Key: {args.api_key}")
-    # Por seguridad, solemos ocultar parte del token en los logs
-    token_display = f"{args.token[:4]}****" if args.token else "None"
-    print(f"Token recibido: {token_display}")
-    print("--- PRUEBA COMPLETADA CON ÉXITO ---")
+# --------------------------------------------------
+# Helpers
+# --------------------------------------------------
+def chunked(data, size):
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
 
 def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
     output_path = os.path.join(output_base_dir, "outputs")
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    os.makedirs(output_path, exist_ok=True)
 
-    for i in range(0, len(entities), chunk_size):
-        chunk = entities[i:i + chunk_size]
-        timestamp = int(time.time() * 1000) + (i // chunk_size)
-        # Incluimos el nombre de la vertical en el fichero
+    for i, chunk in enumerate(chunked(entities, chunk_size)):
+        timestamp = int(time.time() * 1000) + i
         file_name = f"{vertical_name}_{timestamp}.json"
-        full_file_path = os.path.join(output_path, file_name)
-        
-        with open(full_file_path, 'w', encoding='utf-8') as f:
-            json.dump(chunk, f, indent=4, ensure_ascii=False)
-        print(f"Generado: {file_name}")
+        full_path = os.path.join(output_path, file_name)
 
+        with open(full_path, "w", encoding="utf-8") as f:
+            json.dump(chunk, f, indent=4, ensure_ascii=False)
+
+        logger.info("Generado fichero de salida: %s", file_name)
+
+# --------------------------------------------------
+# Main
+# --------------------------------------------------
 def main():
-    # Ahora esperamos 2 parámetros: PATH y VERTICAL
     if len(sys.argv) < 3:
-        print("Uso: python main.py <PATH_DATOS> <NOMBRE_VERTICAL>")
-        print("Ejemplo: python main.py ./datos airquality")
+        logger.error("Uso: python main.py <PATH_DATOS> <VERTICAL>")
         sys.exit(1)
-        
+
     directory_path = sys.argv[1]
     vertical_name = sys.argv[2]
+
+    # FIWARE ServicePath derivado de la vertical
+    service_path = f"/{vertical_name}"
+
+    if not os.path.isdir(directory_path):
+        logger.error("El directorio %s no es válido", directory_path)
+        sys.exit(1)
+
+    logger.info("Ejecutando ETL para vertical '%s'", vertical_name)
+    logger.info("FIWARE ServicePath: %s", service_path)
+
     all_entities = []
 
-    # --- LÓGICA DE CARGA DINÁMICA ---
+    # --------------------------------------------------
+    # Keycloak authentication (OAuth2)
+    # --------------------------------------------------
+    auth = None
+    if os.getenv("AUTH_ENDPOINT"):
+        logger.info("Configurando autenticación Keycloak")
+
+        # Usamos nuestra nueva clase que sí acepta client_id/secret
+        auth = KeycloakAuthManager(
+            endpoint=os.getenv("AUTH_ENDPOINT"),
+            service=os.getenv("FIWARE_SERVICE"),
+            user=os.getenv("AUTH_USER"),
+            password=os.getenv("AUTH_PASSWORD"),
+            client_id=os.getenv("AUTH_CLIENT_ID"),
+            client_secret=os.getenv("AUTH_CLIENT_SECRET")
+        )
+
+        try:
+            auth.get_auth_token_subservice(service_path)
+        except Exception as e:
+            logger.error("Error autenticando contra Keycloak: %s", e)
+            raise
+
+    # --------------------------------------------------
+    # Dynamic transformer loading
+    # --------------------------------------------------
     try:
-        # Importa el módulo modules.airquality (o el que pases por parámetro)
         module = importlib.import_module(f"modules.{vertical_name}.transformer")
-        # Obtenemos la función de transformación del módulo cargado
         transform_func = getattr(module, "transform_csv_to_ngsi")
-    except ImportError:
-        print(f"Error: No existe el trasformador para la vertical '{vertical_name}'")
-        sys.exit(1)
-    except AttributeError:
-        print(f"Error: El módulo '{vertical_name}' no tiene la función 'transform_csv_to_ngsi'")
+    except Exception as e:
+        logger.error("No se pudo cargar el transformer de '%s': %s", vertical_name, e)
         sys.exit(1)
 
-    # Procesar archivos
-    if not os.path.isdir(directory_path):
-        print(f"Error: {directory_path} no es un directorio.")
-        sys.exit(1)
-
+    # --------------------------------------------------
+    # CSV processing
+    # --------------------------------------------------
     for filename in os.listdir(directory_path):
         if filename.endswith(".csv"):
             file_path = os.path.join(directory_path, filename)
-            print(f"Procesando {filename} con vertical: {vertical_name}")
+            logger.info("Procesando fichero %s", filename)
             try:
-                # Usamos la función cargada dinámicamente
                 entities = transform_func(file_path)
                 all_entities.extend(entities)
             except Exception as e:
-                print(f"Error en {filename}: {e}")
+                logger.error("Error procesando %s: %s", filename, e)
 
-    if all_entities:
-        if os.getenv("ORION_URL"):
-            loader = OrionLoader(os.getenv("ORION_URL"))
-            loader.upsert_entities(all_entities)
-        else:
-            save_chunks(all_entities, directory_path, vertical_name)
-    else:
-        print("No se generaron entidades.")
+    if not all_entities:
+        logger.warning("No se generaron entidades NGSI")
+        return
 
+    logger.info("Total de entidades generadas: %d", len(all_entities))
+
+    # --------------------------------------------------
+    # Orion configuration
+    # --------------------------------------------------
+    orion_endpoint = os.getenv("ORION_ENDPOINT")
+
+    if not orion_endpoint:
+        logger.warning(
+            "ORION_ENDPOINT no definido. Guardando entidades en disco"
+        )
+        save_chunks(all_entities, directory_path, vertical_name)
+        return
+
+    # --------------------------------------------------
+    # Send entities to Orion
+    # --------------------------------------------------
+    logger.info("Enviando entidades a Orion (%s)", orion_endpoint)
+
+    cbm = tc.cb.cbManager(endpoint=orion_endpoint)
+
+    with tc.orionStore(
+        cb=cbm,
+        auth=auth,
+        subservice=service_path
+    ) as store:
+        for chunk in chunked(all_entities, 50):
+            store(chunk)
+
+    logger.info("Carga completada correctamente en Orion")
+
+# --------------------------------------------------
+# Entry point
+# --------------------------------------------------
 if __name__ == "__main__":
-    # test_pipeline()
     main()

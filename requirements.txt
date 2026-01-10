@@ -1,2 +1,3 @@
 tc_etl_lib==0.17.0
 pyyaml>=6.0
+python-dotenv

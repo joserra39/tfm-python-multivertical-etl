@@ -1,6 +1,18 @@
 pipeline {
     agent any
 
+    environment {
+        ORION_ENDPOINT = 'http://orion:1026'
+        FIWARE_SERVICE = 'madrid'
+        // FIWARE_SERVICEPATH = '/airquality'
+
+        AUTH_ENDPOINT = 'http://localhost:8082/realms/tfm'
+        AUTH_CLIENT_ID = 'nginx-pep'
+        AUTH_CLIENT_SECRET = credentials('keycloak-nginx-pep-secret')
+        AUTH_USER = 'joserra'
+        AUTH_PASSWORD = credentials('keycloak-user-password')
+    }
+
     stages {
         stage('1. Checkout') {
             steps {
