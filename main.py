@@ -6,6 +6,7 @@ import importlib
 import logging
 import tc_etl_lib as tc
 from modules.common.auth_keycloak import KeycloakAuthManager
+from pathlib import Path
 
 # --------------------------------------------------
 # Load .env only in local environments
@@ -20,7 +21,7 @@ except ImportError:
 # Logging configuration
 # --------------------------------------------------
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
@@ -130,7 +131,28 @@ def main():
         logger.warning(
             "ORION_ENDPOINT no definido. Guardando entidades en disco"
         )
-        save_chunks(all_entities, directory_path, vertical_name)
+        # Almacena las entidades en ficheros JSON por bloques
+        # save_chunks(all_entities, directory_path, vertical_name)
+
+        # Creamos una copia para no alterar las entidades originales si se usan luego
+        entities_for_sql = []
+        for entity in all_entities:
+            sql_ready_entity = entity.copy()
+            for key, attr in sql_ready_entity.items():
+                # Si el atributo es un diccionario (como location o address)
+                # y tiene una clave 'value', serializamos ese 'value'
+                if isinstance(attr, dict) and 'value' in attr:
+                    if isinstance(attr['value'], (dict, list)):
+                        # Convertimos el dict/list en un string JSON
+                        attr['value'] = json.dumps(attr['value'])
+            entities_for_sql.append(sql_ready_entity)
+        # --------------------------------------------
+
+        path_sql = Path(os.path.join(directory_path, "outputs", "inserts.sql"))
+
+        logger.info("Guardando entidades en SQL: %s", path_sql)
+        with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=vertical_name) as store:
+            store(all_entities)
         return
 
     # --------------------------------------------------
