@@ -39,10 +39,10 @@ pipeline {
 
         echo "Pip dentro del venv:"
         which pip
-        python -m pip --version
+        python3 -m pip --version
 
         echo "Instalando dependencias (sin actualizar pip)..."
-        python -m pip install -r requirements.txt
+        python3 -m pip install -r requirements.txt
         '''
       }
     }
@@ -77,14 +77,14 @@ pipeline {
             echo "Activando venv..."
             . .venv/bin/activate || echo "No se pudo activar .venv"
 
-            echo "which python:"
-            which python || echo "python no encontrado"
+            echo "which python3:"
+            which python3 || echo "python3 no encontrado"
 
-            echo "python --version:"
-            python --version || echo "No se pudo obtener version de python"
+            echo "python3 --version:"
+            python3 --version || echo "No se pudo obtener version de python"
 
             echo "Ejecutando main.py..."
-            python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
+            python3 main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
         """
         }
     }
