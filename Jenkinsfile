@@ -54,12 +54,25 @@ pipeline {
             passwordVariable: 'KEYCLOAK_PASSWORD'
           )
         ]) {
-          echo "Ejecutando ETL en el entorno virtual..."
-      sh """
-          set +x
-          . .venv/bin/activate
-          python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
-        """
+          echo "DATA_PATH=${params.DATA_PATH}"
+          echo "DATASET_NAME=${params.DATASET_NAME}"
+          sh """
+            set +x
+            echo "PWD: $(pwd)"
+            echo "Listing DATA_PATH..."
+            ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
+
+            echo "Activando venv..."
+            . .venv/bin/activate || echo "No se pudo activar .venv"
+
+            echo "which python:"
+            which python || echo "python no encontrado"
+            echo "python --version:"
+            python --version || echo "No se pudo obtener version de python"
+
+            echo "Ejecutando main.py..."
+            python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
+          """
         }
       }
     }
