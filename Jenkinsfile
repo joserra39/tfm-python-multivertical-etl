@@ -1,58 +1,76 @@
 pipeline {
-    agent any
+  agent {
+    docker {
+      image 'python:3.12-slim'
+      reuseNode true
+    }
+  }
 
-    environment {
-        ORION_ENDPOINT = 'http://orion:1026'
-        FIWARE_SERVICE = 'madrid'
-        // FIWARE_SERVICEPATH = '/airquality'
-
-        AUTH_ENDPOINT = 'http://localhost:8082/realms/tfm'
-        AUTH_CLIENT_ID = 'nginx-pep'
-        AUTH_CLIENT_SECRET = credentials('keycloak-nginx-pep-secret')
-        AUTH_USER = 'joserra'
-        AUTH_PASSWORD = credentials('keycloak-user-password')
+  stages {
+    stage('1. Checkout') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
-        stage('1. Checkout') {
-            steps {
-                checkout scm
-            }
+    stage('2. Mostrar variables') {
+      steps {
+        script {
+          echo "KEYCLOAK_URL=${env.KEYCLOAK_URL}"
+          echo "ORION_BASE_URL=${env.ORION_BASE_URL}"
+          echo "FIWARE_SERVICE=${env.FIWARE_SERVICE}"
+          echo "FIWARE_SERVICEPATH=${env.FIWARE_SERVICEPATH}"
         }
-
-        stage('2. Create VirtualEnv & Install') {
-            steps {
-                echo 'Creando entorno virtual y cargando dependencias...'
-                bat """
-                @echo off
-                if not exist venv (
-                    python -m venv venv
-                )
-                call venv\\Scripts\\activate && python -m pip install --upgrade pip && pip install -r requirements.txt
-                """
-            }
-        }
-
-        stage('3. Run ETL') {
-            steps {
-                echo "Ejecutando ETL en el entorno virtual..."
-                withCredentials([string(credentialsId: 'ID_DE_TU_CREDENCIAL', variable: 'SECURE_TOKEN')]) {
-                    bat """
-                    @echo off
-                    call venv\\Scripts\\activate && python main.py --url "${params.CSV_URL}" --mapping "${params.MAPPING}" --device_id "${params.DEVICE_ID}" --api_key "${params.API_KEY}" --token "%SECURE_TOKEN%"
-                    """
-                }
-            }
-        }
+        sh 'printenv | sort | grep -E "KEYCLOAK|ORION|FIWARE" || true'
+      }
     }
 
-    post {
-        failure {
-            echo '❌ Error detectado. Revisa la instalación de dependencias o el código Python.'
-        }
-        always {
-            echo 'Finalizando pipeline.'
-            // No borramos el venv para que la siguiente ejecución sea más rápida (cache)
-        }
+    stage('3. Crear venv e instalar dependencias') {
+      steps {
+        echo 'Creando entorno virtual y cargando dependencias...'
+        sh '''
+          python --version
+          if [ ! -d ".venv" ]; then
+            python -m venv .venv
+          fi
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        '''
+      }
     }
+
+    stage('4. Ejecutar ETL') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'KEYCLOAK_CLIENT',
+            usernameVariable: 'KEYCLOAK_CLIENT_ID',
+            passwordVariable: 'KEYCLOAK_CLIENT_SECRET'
+          ),
+          usernamePassword(
+            credentialsId: 'KEYCLOAK_USER',
+            usernameVariable: 'KEYCLOAK_USER',
+            passwordVariable: 'KEYCLOAK_PASSWORD'
+          )
+        ]) {
+          echo "Ejecutando ETL en el entorno virtual..."
+          sh '''
+            set +x
+            . .venv/bin/activate
+            python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    failure {
+      echo 'Error detectado. Revisa la instalación de dependencias o el código Python.'
+    }
+    always {
+      echo 'Finalizando pipeline.'
+    }
+  }
 }
