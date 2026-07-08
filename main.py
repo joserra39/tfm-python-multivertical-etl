@@ -162,6 +162,8 @@ def main():
 
     cbm = tc.cb.cbManager(endpoint=orion_base_url)
 
+    logger.info("-------------")
+
     with tc.orionStore(
         cb=cbm,
         auth=auth,

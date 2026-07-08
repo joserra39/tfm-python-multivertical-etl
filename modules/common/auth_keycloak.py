@@ -35,9 +35,9 @@ class KeycloakAuthManager:
         }
 
         try:
-            logger.info(f"Solicitando token a Keycloak para {subservice}")
+            logger.debug(f"Solicitando token a Keycloak para {subservice}")
             response = requests.post(token_url, data=data, headers=headers, timeout=30)
-            logger.info(f"TOKEN_STATUS {response.status_code}")
+            logger.debug(f"TOKEN_STATUS {response.status_code}")
             response.raise_for_status()
             
             token = response.json()['access_token']
