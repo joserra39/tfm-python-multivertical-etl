@@ -24,12 +24,12 @@ pipeline {
       steps {
         echo 'Creando entorno virtual y cargando dependencias...'
         sh '''
-          python --version
+          python3 --version
           if [ ! -d ".venv" ]; then
             python3 -m venv .venv
           fi
           . .venv/bin/activate
-          python -m pip install --upgrade pip
+          python3 -m pip install --upgrade pip
           pip install -r requirements.txt
         '''
       }
