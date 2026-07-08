@@ -169,7 +169,7 @@ def main():
     with tc.orionStore(
         cb=cbm,
         auth=auth,
-        service=service,
+        # service=service,
         subservice=service_path
     ) as store:
         for i, chunk in enumerate(chunked(all_entities, 50), start=1):

@@ -35,12 +35,13 @@ class KeycloakAuthManager:
         }
 
         try:
-            logger.debug(f"Solicitando token a Keycloak para {subservice}")
+            logger.debug(f"Solicitando token a Keycloak para {subservice} a {token_url}")
             response = requests.post(token_url, data=data, headers=headers, timeout=30)
             logger.debug(f"TOKEN_STATUS {response.status_code}")
             response.raise_for_status()
             
             token = response.json()['access_token']
+            logger.debug(f"TOKEN={token}")
             # Guardamos el token en el diccionario interno para que orionStore lo encuentre
             self.tokens[subservice] = token
             return token
