@@ -48,7 +48,7 @@ pipeline {
     }
 
     stage('4. Ejecutar ETL') {
-    steps {
+      steps {
         withCredentials([
         usernamePassword(
             credentialsId: 'KEYCLOAK_CLIENT',
@@ -67,10 +67,7 @@ pipeline {
             set +x
 
             echo "PWD: \$(pwd)"
-            echo "Listing /"
-            ls -la /
-            echo "Listing /data"
-            ls -la /data
+
             echo "Listing DATA_PATH..."
             ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
 
@@ -81,13 +78,13 @@ pipeline {
             which python3 || echo "python3 no encontrado"
 
             echo "python3 --version:"
-            python3 --version || echo "No se pudo obtener version de python"
+            python3 --version || echo "No se pudo obtener version de python3"
 
             echo "Ejecutando main.py..."
             python3 main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
         """
         }
-    }
+      }
     }
   }
 
