@@ -27,25 +27,14 @@ pipeline {
 
     stage('3. Crear venv e instalar dependencias') {
       steps {
+        echo 'Creando entorno virtual y cargando dependencias...'
         sh '''
-          set -e
-          echo "Python en el agente:"
-          python --version || python3 --version
-
-          echo "Limpiando venv anterior (si existe)..."
-          rm -rf .venv
-
-          echo "Creando nuevo entorno virtual..."
-          python -m venv .venv
-
-          echo "Activando entorno virtual..."
+          python --version
+          if [ ! -d ".venv" ]; then
+            python -m venv .venv
+          fi
           . .venv/bin/activate
-
-          echo "Pip dentro del venv:"
-          which pip
-          pip --version
-
-          echo "Instalando dependencias..."
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
         '''
       }
