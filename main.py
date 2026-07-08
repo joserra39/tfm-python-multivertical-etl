@@ -58,6 +58,8 @@ def main():
     directory_path = sys.argv[1]
     vertical_name = sys.argv[2]
 
+    service = os.getenv("FIWARE_SERVICE")
+
     # FIWARE ServicePath derivado de la vertical
     service_path = f"/{vertical_name}"
 
@@ -167,10 +169,16 @@ def main():
     with tc.orionStore(
         cb=cbm,
         auth=auth,
+        service=service,
         subservice=service_path
     ) as store:
-        for chunk in chunked(all_entities, 50):
-            store(chunk)
+        for i, chunk in enumerate(chunked(all_entities, 50), start=1):
+            logger.info("Enviando batch %d con %d entidades", i, len(chunk))
+            try:
+                store(chunk)
+            except Exception as e:
+                logger.error("Error enviando batch %d: %s", i, e)
+                raise
 
     logger.info("Carga completada correctamente en Orion")
 
