@@ -2,6 +2,7 @@ pipeline {
   agent {
     docker {
       image 'python:3.12-slim'
+      args '-v /srv/tfm-data:/var/jenkins_home/tfm-data'
       reuseNode true
     }
   }
