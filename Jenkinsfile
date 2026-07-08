@@ -61,9 +61,11 @@ pipeline {
             set +x
 
             echo "PWD: \$(pwd)"
-            echo "Listing DATA_PATH..."
+            echo "Listing /"
             ls -la /
+            echo "Listing /data"
             ls -la /data
+            echo "Listing DATA_PATH..."
             ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
 
             echo "Activando venv..."
