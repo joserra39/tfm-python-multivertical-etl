@@ -41,8 +41,8 @@ pipeline {
         which pip
         python3 -m pip --version
 
-        echo "Instalando dependencias (sin actualizar pip)..."
-        python3 -m pip install -r requirements.txt
+        echo "Instalando dependencias..."
+        python3 -m pip install --break-system-packages -r requirements.txt
         '''
       }
     }
