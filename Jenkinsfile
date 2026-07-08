@@ -55,11 +55,11 @@ pipeline {
           )
         ]) {
           echo "Ejecutando ETL en el entorno virtual..."
-          sh '''
-            set +x
-            . .venv/bin/activate
-            python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
-          '''
+      sh """
+          set +x
+          . .venv/bin/activate
+          python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
+        """
         }
       }
     }
