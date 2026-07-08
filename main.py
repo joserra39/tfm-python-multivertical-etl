@@ -74,17 +74,17 @@ def main():
     # Keycloak authentication (OAuth2)
     # --------------------------------------------------
     auth = None
-    if os.getenv("AUTH_ENDPOINT"):
+    if os.getenv("KEYCLOAK_URL"):
         logger.info("Configurando autenticación Keycloak")
 
         # Usamos nuestra nueva clase que sí acepta client_id/secret
         auth = KeycloakAuthManager(
-            endpoint=os.getenv("AUTH_ENDPOINT"),
+            endpoint=os.getenv("KEYCLOAK_URL"),
             service=os.getenv("FIWARE_SERVICE"),
-            user=os.getenv("AUTH_USER"),
-            password=os.getenv("AUTH_PASSWORD"),
-            client_id=os.getenv("AUTH_CLIENT_ID"),
-            client_secret=os.getenv("AUTH_CLIENT_SECRET")
+            user=os.getenv("KEYCLOAK_USER"),
+            password=os.getenv("KEYCLOAK_PASSWORD"),
+            client_id=os.getenv("KEYCLOAK_CLIENT_ID"),
+            client_secret=os.getenv("KEYCLOAK_CLIENT_SECRET")
         )
 
         try:
@@ -125,11 +125,11 @@ def main():
     # --------------------------------------------------
     # Orion configuration
     # --------------------------------------------------
-    orion_endpoint = os.getenv("ORION_ENDPOINT")
+    orion_base_url = os.getenv("ORION_BASE_URL")
 
-    if not orion_endpoint:
+    if not orion_base_url:
         logger.warning(
-            "ORION_ENDPOINT no definido. Guardando entidades en disco"
+            "ORION_BASE_URL no definido. Guardando entidades en disco"
         )
         # Almacena las entidades en ficheros JSON por bloques
         # save_chunks(all_entities, directory_path, vertical_name)
@@ -158,9 +158,9 @@ def main():
     # --------------------------------------------------
     # Send entities to Orion
     # --------------------------------------------------
-    logger.info("Enviando entidades a Orion (%s)", orion_endpoint)
+    logger.info("Enviando entidades a Orion (%s)", orion_base_url)
 
-    cbm = tc.cb.cbManager(endpoint=orion_endpoint)
+    cbm = tc.cb.cbManager(endpoint=orion_base_url)
 
     with tc.orionStore(
         cb=cbm,
