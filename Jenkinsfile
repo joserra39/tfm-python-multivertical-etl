@@ -41,24 +41,25 @@ pipeline {
     }
 
     stage('4. Ejecutar ETL') {
-      steps {
+    steps {
         withCredentials([
-          usernamePassword(
+        usernamePassword(
             credentialsId: 'KEYCLOAK_CLIENT',
             usernameVariable: 'KEYCLOAK_CLIENT_ID',
             passwordVariable: 'KEYCLOAK_CLIENT_SECRET'
-          ),
-          usernamePassword(
+        ),
+        usernamePassword(
             credentialsId: 'KEYCLOAK_USER',
             usernameVariable: 'KEYCLOAK_USER',
             passwordVariable: 'KEYCLOAK_PASSWORD'
-          )
+        )
         ]) {
-          echo "DATA_PATH=${params.DATA_PATH}"
-          echo "DATASET_NAME=${params.DATASET_NAME}"
-          sh """
+        echo "DATA_PATH=${params.DATA_PATH}"
+        echo "DATASET_NAME=${params.DATASET_NAME}"
+        sh """
             set +x
-            echo "PWD: $(pwd)"
+
+            echo "PWD: \$(pwd)"
             echo "Listing DATA_PATH..."
             ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
 
@@ -67,14 +68,15 @@ pipeline {
 
             echo "which python:"
             which python || echo "python no encontrado"
+
             echo "python --version:"
             python --version || echo "No se pudo obtener version de python"
 
             echo "Ejecutando main.py..."
             python main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
-          """
+        """
         }
-      }
+    }
     }
   }
 
