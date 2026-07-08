@@ -24,13 +24,25 @@ pipeline {
       steps {
         echo 'Creando entorno virtual y cargando dependencias...'
         sh '''
-          python3 --version
-          if [ ! -d ".venv" ]; then
+        set -e
+
+        echo "Python3 en el nodo:"
+        python3 --version
+
+        echo "Creando entorno virtual (si no existe)..."
+        if [ ! -d ".venv" ]; then
             python3 -m venv .venv
-          fi
-          . .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          pip install -r requirements.txt
+        fi
+
+        echo "Activando entorno virtual..."
+        . .venv/bin/activate
+
+        echo "Pip dentro del venv:"
+        which pip
+        python -m pip --version
+
+        echo "Instalando dependencias (sin actualizar pip)..."
+        python -m pip install -r requirements.txt
         '''
       }
     }
