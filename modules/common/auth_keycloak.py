@@ -22,18 +22,22 @@ class KeycloakAuthManager:
         """Obtiene el token de Keycloak y lo guarda en el formato que espera la librería"""
         token_url = f"{self.endpoint}"
         
-        payload = {
+        data = {
             'grant_type': 'password',
             'client_id': self.client_id,
             'client_secret': self.client_secret,
             'username': self.user,
-            'password': self.password,
-            'scope': 'openid'
+            'password': self.password
+        }
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
         }
 
         try:
             logger.info(f"Solicitando token a Keycloak para {subservice}")
-            response = requests.post(token_url, data=payload)
+            response = requests.post(token_url, data=data, headers=headers, timeout=30)
+            logger.info(f"TOKEN_STATUS {response.status_code}")
             response.raise_for_status()
             
             token = response.json()['access_token']
