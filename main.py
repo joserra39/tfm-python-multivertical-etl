@@ -58,8 +58,6 @@ def main():
     directory_path = sys.argv[1]
     vertical_name = sys.argv[2]
 
-    service = os.getenv("FIWARE_SERVICE")
-
     # FIWARE ServicePath derivado de la vertical
     service_path = f"/{vertical_name}"
 
@@ -131,7 +129,7 @@ def main():
 
     if not orion_base_url:
         logger.warning(
-            "ORION_BASE_URL no definido. Guardando entidades en disco"
+            "ORION_BASE_URL no definida. Guardando entidades en disco"
         )
         # Almacena las entidades en ficheros JSON por bloques
         # save_chunks(all_entities, directory_path, vertical_name)
@@ -169,7 +167,6 @@ def main():
     with tc.orionStore(
         cb=cbm,
         auth=auth,
-        # service=service,
         subservice=service_path
     ) as store:
         for i, chunk in enumerate(chunked(all_entities, 50), start=1):

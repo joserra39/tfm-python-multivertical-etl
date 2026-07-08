@@ -41,7 +41,7 @@ class KeycloakAuthManager:
             response.raise_for_status()
             
             token = response.json()['access_token']
-            logger.debug(f"TOKEN={token}")
+            # logger.debug(f"TOKEN={token}")
             # Guardamos el token en el diccionario interno para que orionStore lo encuentre
             self.tokens[subservice] = token
             return token
