@@ -20,7 +20,7 @@ class KeycloakAuthManager:
 
     def get_auth_token_subservice(self, subservice):
         """Obtiene el token de Keycloak y lo guarda en el formato que espera la librería"""
-        token_url = f"{self.endpoint}/protocol/openid-connect/token"
+        token_url = f"{self.endpoint}"
         
         payload = {
             'grant_type': 'password',
