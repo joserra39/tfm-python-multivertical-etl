@@ -173,7 +173,7 @@ def main():
             logger.info("Enviando batch %d con %d entidades", i, len(chunk))
             try:
                 store(chunk)
-                time.sleep(5)  # pausa de 5 segundos entre batches
+                time.sleep(2)  # pausa de 2 segundos entre batches
             except Exception as e:
                 logger.error("Error enviando batch %d: %s", i, e)
                 raise
