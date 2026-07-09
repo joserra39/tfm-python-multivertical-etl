@@ -126,6 +126,8 @@ def main():
     # Orion configuration
     # --------------------------------------------------
     orion_base_url = os.getenv("ORION_BASE_URL")
+    batch_size = int(os.environ.get("ORION_BATCH_SIZE", "50"))
+    batch_delay = int(os.environ.get("ORION_BATCH_DELAY_SECONDS", "5"))
 
     if not orion_base_url:
         logger.warning(
@@ -169,11 +171,11 @@ def main():
         auth=auth,
         subservice=service_path
     ) as store:
-        for i, chunk in enumerate(chunked(all_entities, 50), start=1):
+        for i, chunk in enumerate(chunked(all_entities, batch_size), start=1):
             logger.info("Enviando batch %d con %d entidades", i, len(chunk))
             try:
                 store(chunk)
-                time.sleep(2)  # pausa de 2 segundos entre batches
+                time.sleep(batch_delay)
             except Exception as e:
                 logger.error("Error enviando batch %d: %s", i, e)
                 raise
