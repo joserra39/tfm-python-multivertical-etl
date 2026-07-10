@@ -140,7 +140,12 @@ def write_records_to_temp_csv(
     fieldnames = sorted({key for record in records for key in record.keys()})
 
     try:
-        writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
+        writer = csv.DictWriter(
+            temp_file,
+            fieldnames=fieldnames,
+            delimiter=";",
+            quoting=csv.QUOTE_MINIMAL
+        )
         writer.writeheader()
         for record in records:
             writer.writerow(record)
