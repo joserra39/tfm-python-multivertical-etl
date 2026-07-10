@@ -126,8 +126,8 @@ def main():
     # Orion configuration
     # --------------------------------------------------
     orion_base_url = os.getenv("ORION_BASE_URL")
-    batch_size = int(os.environ.get("ORION_BATCH_SIZE", "50"))
-    batch_delay = int(os.environ.get("ORION_BATCH_DELAY_SECONDS", "5"))
+    batch_size = int(os.environ.get("ORION_BATCH_SIZE", "20"))
+    batch_delay = int(os.environ.get("ORION_BATCH_DELAY", "10"))
 
     if not orion_base_url:
         logger.warning(

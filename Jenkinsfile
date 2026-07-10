@@ -63,26 +63,28 @@ pipeline {
         ]) {
         echo "DATA_PATH=${params.DATA_PATH}"
         echo "DATASET_NAME=${params.DATASET_NAME}"
-        sh """
-            set +x
+        timeout(time: 10, unit: 'MINUTES') {
+            sh """
+                set +x
 
-            echo "PWD: \$(pwd)"
+                echo "PWD: \$(pwd)"
 
-            echo "Listing DATA_PATH..."
-            ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
+                echo "Listing DATA_PATH..."
+                ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
 
-            echo "Activando venv..."
-            . .venv/bin/activate || echo "No se pudo activar .venv"
+                echo "Activando venv..."
+                . .venv/bin/activate || echo "No se pudo activar .venv"
 
-            echo "which python3:"
-            which python3 || echo "python3 no encontrado"
+                echo "which python3:"
+                which python3 || echo "python3 no encontrado"
 
-            echo "python3 --version:"
-            python3 --version || echo "No se pudo obtener version de python3"
+                echo "python3 --version:"
+                python3 --version || echo "No se pudo obtener version de python3"
 
-            echo "Ejecutando main.py..."
-            python3 main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
-        """
+                echo "Ejecutando main.py..."
+                python3 main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
+            """
+            }
         }
       }
     }
