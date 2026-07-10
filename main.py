@@ -6,6 +6,7 @@ import importlib
 import logging
 import tc_etl_lib as tc
 from modules.common.auth_keycloak import KeycloakAuthManager
+from modules.common.extractor import get_input_files, DataExtractionError
 from pathlib import Path
 
 # --------------------------------------------------
@@ -52,7 +53,7 @@ def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
 # --------------------------------------------------
 def main():
     if len(sys.argv) < 3:
-        logger.error("Uso: python main.py <PATH_DATOS> <VERTICAL>")
+        logger.error("Uso: python main.py <directory_path> <vertical_name>")
         sys.exit(1)
 
     directory_path = sys.argv[1]
@@ -77,7 +78,6 @@ def main():
     if os.getenv("KEYCLOAK_URL"):
         logger.info("Configurando autenticación Keycloak")
 
-        # Usamos nuestra nueva clase que sí acepta client_id/secret
         auth = KeycloakAuthManager(
             endpoint=os.getenv("KEYCLOAK_URL"),
             service=os.getenv("FIWARE_SERVICE"),
@@ -104,17 +104,31 @@ def main():
         sys.exit(1)
 
     # --------------------------------------------------
-    # CSV processing
+    # Data extraction (CSV o API)
     # --------------------------------------------------
-    for filename in os.listdir(directory_path):
-        if filename.endswith(".csv"):
-            file_path = os.path.join(directory_path, filename)
-            logger.info("Procesando fichero %s", filename)
-            try:
-                entities = transform_func(file_path)
-                all_entities.extend(entities)
-            except Exception as e:
-                logger.error("Error procesando %s: %s", filename, e)
+    try:
+        input_files = get_input_files(directory_path, vertical_name)
+    except DataExtractionError as e:
+        logger.error("Error en la extracción de datos: %s", e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Error inesperado obteniendo los datos de entrada: %s", e)
+        sys.exit(1)
+
+    if not input_files:
+        logger.warning("No se encontraron datos de entrada para procesar")
+        return
+
+    # --------------------------------------------------
+    # Transform processing
+    # --------------------------------------------------
+    for file_path in input_files:
+        logger.info("Procesando entrada %s", file_path)
+        try:
+            entities = transform_func(file_path)
+            all_entities.extend(entities)
+        except Exception as e:
+            logger.error("Error procesando %s: %s", file_path, e)
 
     if not all_entities:
         logger.warning("No se generaron entidades NGSI")
@@ -133,22 +147,15 @@ def main():
         logger.warning(
             "ORION_BASE_URL no definida. Guardando entidades en disco"
         )
-        # Almacena las entidades en ficheros JSON por bloques
-        # save_chunks(all_entities, directory_path, vertical_name)
 
-        # Creamos una copia para no alterar las entidades originales si se usan luego
         entities_for_sql = []
         for entity in all_entities:
             sql_ready_entity = entity.copy()
             for key, attr in sql_ready_entity.items():
-                # Si el atributo es un diccionario (como location o address)
-                # y tiene una clave 'value', serializamos ese 'value'
                 if isinstance(attr, dict) and 'value' in attr:
                     if isinstance(attr['value'], (dict, list)):
-                        # Convertimos el dict/list en un string JSON
                         attr['value'] = json.dumps(attr['value'])
             entities_for_sql.append(sql_ready_entity)
-        # --------------------------------------------
 
         path_sql = Path(os.path.join(directory_path, "outputs", "inserts.sql"))
 
