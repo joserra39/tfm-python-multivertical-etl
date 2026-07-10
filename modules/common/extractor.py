@@ -31,9 +31,9 @@ def _build_madrid_filters() -> Dict[str, str]:
     """
     filters = {}
 
-    ano = _get_env("ANO")
-    mes = _get_env("MES")
-    dia = _get_env("DIA")
+    ano = _get_env("MADRID_API_ANO")
+    mes = _get_env("MADRID_API_MES")
+    dia = _get_env("MADRID_API_DIA")
 
     if ano:
         filters["ANO"] = ano
@@ -46,7 +46,7 @@ def _build_madrid_filters() -> Dict[str, str]:
 
 
 def _build_madrid_payload() -> Dict:
-    resource_id = _get_env("RESOURCE_ID", "201200-1-calidad-aire-horario-csv")
+    resource_id = _get_env("MADRID_API_RESOURCE_ID", "201200-1-calidad-aire-horario-csv")
     limit = 1
     offset = 0
 
