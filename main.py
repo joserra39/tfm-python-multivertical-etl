@@ -48,6 +48,22 @@ def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
 
         logger.info("Generado fichero de salida: %s", file_name)
 
+FORBIDDEN_CHARS = ['<', '>', '"', "'", '=', ';', '(', ')']
+
+def find_invalid_values(entity):
+    invalid = []
+    for attr_name, attr_value in entity.items():
+        if isinstance(attr_value, dict) and "value" in attr_value:
+            value = attr_value["value"]
+            if isinstance(value, str):
+                bad = [c for c in FORBIDDEN_CHARS if c in value]
+                if bad:
+                    invalid.append({
+                        "attr": attr_name,
+                        "value": value,
+                        "chars": bad
+                    })
+    return invalid
 # --------------------------------------------------
 # Main
 # --------------------------------------------------
@@ -177,8 +193,18 @@ def main():
         subservice=service_path
     ) as store:
         for i, chunk in enumerate(chunked(all_entities, batch_size), start=1):
-            logger.info("Enviando batch %d con %d entidades", i, len(chunk))
+            
+            invalid = find_invalid_values(entity)
+            if invalid:
+                logger.error(
+                    "Entidad con caracteres inválidos en batch=%d pos=%d id=%s invalid=%s",
+                    i,
+                    pos,
+                    entity.get("id"),
+                    invalid
+                )
             try:
+                logger.info("Enviando batch %d con %d entidades", i, len(chunk))
                 store(chunk)
                 time.sleep(batch_delay)
             except Exception as e:
