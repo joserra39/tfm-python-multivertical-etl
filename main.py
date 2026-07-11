@@ -48,22 +48,30 @@ def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
 
         logger.info("Generado fichero de salida: %s", file_name)
 
-FORBIDDEN_CHARS = ['<', '>', '"', "'", '=', ';', '(', ')']
+def log_batch_payload(batch_number, chunk):
+    try:
+        batch_json = json.dumps(chunk, ensure_ascii=False, indent=2)
+        logger.debug("Payload batch %d:\n%s", batch_number, batch_json)
+    except Exception as e:
+        logger.error("No se pudo serializar el batch %d para log: %s", batch_number, e)
 
-def find_invalid_values(entity):
-    invalid = []
-    for attr_name, attr_value in entity.items():
-        if isinstance(attr_value, dict) and "value" in attr_value:
-            value = attr_value["value"]
-            if isinstance(value, str):
-                bad = [c for c in FORBIDDEN_CHARS if c in value]
-                if bad:
-                    invalid.append({
-                        "attr": attr_name,
-                        "value": value,
-                        "chars": bad
-                    })
-    return invalid
+def log_suspicious_characters(batch_number, chunk):
+    forbidden_chars = set(['<', '>', '"', "'", '=', ';', '(', ')'])
+
+    for entity_idx, entity in enumerate(chunk, start=1):
+        for attr_name, attr_value in entity.items():
+            serialized = json.dumps(attr_value, ensure_ascii=False)
+
+            bad_chars = sorted(set(ch for ch in serialized if ch in forbidden_chars))
+            if bad_chars:
+                logger.warning(
+                    "Batch %d, entidad %d, atributo '%s' contiene caracteres sospechosos %s. Valor: %s",
+                    batch_number,
+                    entity_idx,
+                    attr_name,
+                    bad_chars,
+                    serialized
+                )
 # --------------------------------------------------
 # Main
 # --------------------------------------------------
@@ -203,6 +211,8 @@ def main():
                         entity.get("id"),
                         invalid
                     )
+            log_batch_payload(i, chunk)
+            log_suspicious_characters(i, chunk)
             try:
                 logger.info("Enviando batch %d con %d entidades", i, len(chunk))
                 store(chunk)
