@@ -46,10 +46,9 @@ def _build_madrid_filters() -> Dict[str, str]:
     return filters
 
 
-def _build_madrid_payload() -> Dict:
+def _build_madrid_payload(offset: int = 0) -> Dict:
     resource_id = _get_env("MADRID_API_RESOURCE_ID", "201200-1-calidad-aire-horario-csv")
-    limit = 1
-    offset = 0
+    limit = int(_get_env("MADRID_API_LIMIT", "100"))
 
     payload = {
         "resource_id": resource_id,
@@ -65,51 +64,68 @@ def _build_madrid_payload() -> Dict:
 
 
 def fetch_madrid_api_data() -> List[Dict]:
-    """
-    Llama a la API CKAN del Ayuntamiento de Madrid y devuelve los registros.
-    """
     api_url = _get_env(
         "MADRID_API_URL",
         "https://datos.madrid.es/api/3/action/datastore_search"
     )
-
     timeout = int(_get_env("MADRID_API_TIMEOUT", "60"))
-    payload = _build_madrid_payload()
+    limit = int(_get_env("MADRID_API_LIMIT", "100"))
+    if limit <= 0:
+        raise DataExtractionError("MADRID_API_LIMIT debe ser un entero mayor que 0")
 
-    logger.info("Extrayendo datos desde API Madrid")
-    logger.info("URL API: %s", api_url)
-    logger.info("Payload enviado: %s", json.dumps(payload, ensure_ascii=False))
+    all_records: List[Dict] = []
+    current_offset = 0
+    page_number = 1
 
-    try:
-        response = requests.post(
-            api_url,
-            headers={"content-type": "application/json"},
-            json=payload,
-            timeout=timeout
+    while True:
+        payload = _build_madrid_payload(offset=current_offset)
+
+        logger.info("Extrayendo página %d desde API Madrid", page_number)
+        logger.info("URL API: %s", api_url)
+        logger.info("Payload enviado: %s", json.dumps(payload, ensure_ascii=False))
+
+        try:
+            response = requests.post(
+                api_url,
+                headers={"content-type": "application/json"},
+                json=payload,
+                timeout=timeout
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise DataExtractionError(f"Error llamando a la API de Madrid: {exc}") from exc
+
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise DataExtractionError("La respuesta de la API no es un JSON válido") from exc
+
+        if not data.get("success", False):
+            raise DataExtractionError(
+                f"La API devolvió success=false: {json.dumps(data, ensure_ascii=False)}"
+            )
+
+        result = data.get("result", {})
+        records = result.get("records", [])
+
+        if not isinstance(records, list):
+            raise DataExtractionError("El campo result.records no tiene formato lista")
+
+        logger.info(
+            "Página %d: recuperados %d registros (offset=%d, limit=%d)",
+            page_number, len(records), current_offset, limit
         )
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        raise DataExtractionError(f"Error llamando a la API de Madrid: {exc}") from exc
 
-    try:
-        data = response.json()
-    except ValueError as exc:
-        raise DataExtractionError("La respuesta de la API no es un JSON válido") from exc
+        if not records:
+            logger.info("No se han recibido más registros. Fin de paginación.")
+            break
 
-    if not data.get("success", False):
-        raise DataExtractionError(
-            f"La API devolvió success=false: {json.dumps(data, ensure_ascii=False)}"
-        )
+        all_records.extend(records)
+        current_offset += limit
+        page_number += 1
 
-    result = data.get("result", {})
-    records = result.get("records", [])
-
-    logger.info("Registros recuperados desde API: %d", len(records))
-
-    if not isinstance(records, list):
-        raise DataExtractionError("El campo result.records no tiene formato lista")
-
-    return records
+    logger.info("Total de registros recuperados desde API: %d", len(all_records))
+    return all_records
 
 
 def write_records_to_temp_csv(
