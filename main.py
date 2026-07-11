@@ -96,28 +96,6 @@ def main():
     all_entities = []
 
     # --------------------------------------------------
-    # Keycloak authentication (OAuth2)
-    # --------------------------------------------------
-    auth = None
-    if os.getenv("KEYCLOAK_URL"):
-        logger.info("Configurando autenticación Keycloak")
-
-        auth = KeycloakAuthManager(
-            endpoint=os.getenv("KEYCLOAK_URL"),
-            service=os.getenv("FIWARE_SERVICE"),
-            user=os.getenv("KEYCLOAK_USER"),
-            password=os.getenv("KEYCLOAK_PASSWORD"),
-            client_id=os.getenv("KEYCLOAK_CLIENT_ID"),
-            client_secret=os.getenv("KEYCLOAK_CLIENT_SECRET")
-        )
-
-        try:
-            auth.get_auth_token_subservice(service_path)
-        except Exception as e:
-            logger.error("Error autenticando contra Keycloak: %s", e)
-            raise
-
-    # --------------------------------------------------
     # Dynamic transformer loading
     # --------------------------------------------------
     try:
@@ -194,14 +172,36 @@ def main():
 
         logger.info("Fichero SQL generado correctamente")
         return
-    
-    # --------------------------------------------------
-    # Send entities to Orion
-    # --------------------------------------------------
+
     if not orion_base_url:
         logger.error("ORION_BASE_URL no está definida")
         sys.exit(1)
 
+    # --------------------------------------------------
+    # Keycloak authentication (OAuth2)
+    # --------------------------------------------------
+    auth = None
+    if os.getenv("KEYCLOAK_URL"):
+        logger.info("Configurando autenticación Keycloak")
+
+        auth = KeycloakAuthManager(
+            endpoint=os.getenv("KEYCLOAK_URL"),
+            service=os.getenv("FIWARE_SERVICE"),
+            user=os.getenv("KEYCLOAK_USER"),
+            password=os.getenv("KEYCLOAK_PASSWORD"),
+            client_id=os.getenv("KEYCLOAK_CLIENT_ID"),
+            client_secret=os.getenv("KEYCLOAK_CLIENT_SECRET")
+        )
+
+        try:
+            auth.get_auth_token_subservice(service_path)
+        except Exception as e:
+            logger.error("Error autenticando contra Keycloak: %s", e)
+            raise
+
+    # --------------------------------------------------
+    # Send entities to Orion
+    # --------------------------------------------------
     logger.info("Enviando entidades a Orion (%s)", orion_base_url)
 
     cbm = tc.cb.cbManager(endpoint=orion_base_url)
