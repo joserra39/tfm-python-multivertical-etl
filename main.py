@@ -161,16 +161,21 @@ def main():
     logger.info("Total de entidades generadas: %d", len(all_entities))
 
     # --------------------------------------------------
-    # Orion configuration
+    # Get configuration
     # --------------------------------------------------
+    output_target = os.getenv("OUTPUT_TARGET", "ORION")
     orion_base_url = os.getenv("ORION_BASE_URL")
     batch_size = int(os.environ.get("ORION_BATCH_SIZE", "20"))
     batch_delay = int(os.environ.get("ORION_BATCH_DELAY", "10"))
 
-    if not orion_base_url:
-        logger.warning(
-            "ORION_BASE_URL no definida. Guardando entidades en disco"
-        )
+    logger.info("Destino de salida seleccionado: %s", output_target)
+
+    # --------------------------------------------------
+    # Send entities to SQL File
+    # --------------------------------------------------
+
+    if output_target == "SQL":
+        logger.info("Generando salida SQL")
 
         entities_for_sql = []
         for entity in all_entities:
@@ -186,11 +191,17 @@ def main():
         logger.info("Guardando entidades en SQL: %s", path_sql)
         with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=vertical_name) as store:
             store(all_entities)
-        return
 
+        logger.info("Fichero SQL generado correctamente")
+        return
+    
     # --------------------------------------------------
     # Send entities to Orion
     # --------------------------------------------------
+    if not orion_base_url:
+        logger.error("ORION_BASE_URL no está definida")
+        sys.exit(1)
+
     logger.info("Enviando entidades a Orion (%s)", orion_base_url)
 
     cbm = tc.cb.cbManager(endpoint=orion_base_url)
