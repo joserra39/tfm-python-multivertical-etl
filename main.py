@@ -193,16 +193,16 @@ def main():
         subservice=service_path
     ) as store:
         for i, chunk in enumerate(chunked(all_entities, batch_size), start=1):
-            
-            invalid = find_invalid_values(entity)
-            if invalid:
-                logger.error(
-                    "Entidad con caracteres inválidos en batch=%d pos=%d id=%s invalid=%s",
-                    i,
-                    pos,
-                    entity.get("id"),
-                    invalid
-                )
+            for pos, entity in enumerate(chunk, start=1):
+                invalid = find_invalid_values(entity)
+                if invalid:
+                    logger.error(
+                        "Entidad con caracteres inválidos en batch=%d pos=%d id=%s invalid=%s",
+                        i,
+                        pos,
+                        entity.get("id"),
+                        invalid
+                    )
             try:
                 logger.info("Enviando batch %d con %d entidades", i, len(chunk))
                 store(chunk)
