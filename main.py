@@ -201,20 +201,10 @@ def main():
         subservice=service_path
     ) as store:
         for i, chunk in enumerate(chunked(all_entities, batch_size), start=1):
-            for pos, entity in enumerate(chunk, start=1):
-                invalid = find_invalid_values(entity)
-                if invalid:
-                    logger.error(
-                        "Entidad con caracteres inválidos en batch=%d pos=%d id=%s invalid=%s",
-                        i,
-                        pos,
-                        entity.get("id"),
-                        invalid
-                    )
             log_batch_payload(i, chunk)
             log_suspicious_characters(i, chunk)
+            logger.info("Enviando batch %d con %d entidades", i, len(chunk))
             try:
-                logger.info("Enviando batch %d con %d entidades", i, len(chunk))
                 store(chunk)
                 time.sleep(batch_delay)
             except Exception as e:
