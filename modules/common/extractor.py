@@ -3,6 +3,7 @@ import csv
 import json
 import logging
 import tempfile
+import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -125,6 +126,8 @@ def write_records_to_temp_csv(
         return []
 
     output_dir = Path(output_base_dir) / "outputs" / "tmp"
+    if output_dir.exists() and output_dir.is_dir():
+        shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     temp_file = tempfile.NamedTemporaryFile(
