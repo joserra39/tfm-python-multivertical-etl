@@ -201,8 +201,8 @@ def main():
         subservice=service_path
     ) as store:
         for i, chunk in enumerate(chunked(all_entities, batch_size), start=1):
-            log_batch_payload(i, chunk)
-            log_suspicious_characters(i, chunk)
+            # log_batch_payload(i, chunk)
+            # log_suspicious_characters(i, chunk)
             logger.info("Enviando batch %d con %d entidades", i, len(chunk))
             try:
                 store(chunk)
