@@ -8,7 +8,7 @@
   },
 
   "location": {
-    "type": "geo:json",
+    "type": "Text",
     "value": {
       "type": "Point",
       "coordinates": "{coordinates}"
