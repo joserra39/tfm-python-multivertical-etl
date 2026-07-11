@@ -61,16 +61,11 @@ pipeline {
             passwordVariable: 'KEYCLOAK_PASSWORD'
         )
         ]) {
-        echo "DATA_PATH=${params.DATA_PATH}"
-        echo "DATASET_NAME=${params.DATASET_NAME}"
         timeout(time: 10, unit: 'MINUTES') {
             sh """
                 set +x
 
                 echo "PWD: \$(pwd)"
-
-                echo "Listing DATA_PATH..."
-                ls -la "${params.DATA_PATH}" || echo "No se puede listar DATA_PATH"
 
                 echo "Activando venv..."
                 . .venv/bin/activate || echo "No se pudo activar .venv"
@@ -82,7 +77,7 @@ pipeline {
                 python3 --version || echo "No se pudo obtener version de python3"
 
                 echo "Ejecutando main.py..."
-                python3 main.py "${params.DATA_PATH}" "${params.DATASET_NAME}"
+                python3 main.py
             """
             }
         }

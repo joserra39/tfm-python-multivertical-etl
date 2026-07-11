@@ -72,19 +72,36 @@ def log_suspicious_characters(batch_number, chunk):
                     bad_chars,
                     serialized
                 )
+
+def replace_target_schema(sql_file_path: Path, target_schema: str):
+    content = sql_file_path.read_text(encoding="utf-8")
+    content = content.replace(":target_schema.", f"{target_schema}.")
+    sql_file_path.write_text(content, encoding="utf-8")
 # --------------------------------------------------
 # Main
 # --------------------------------------------------
 def main():
-    if len(sys.argv) < 3:
-        logger.error("Uso: python main.py <directory_path> <vertical_name>")
+    directory_path = os.getenv("DATA_PATH")
+    service_path = os.getenv("FIWARE_SERVICEPATH")
+
+    if not directory_path:
+        logger.error("La variable de entorno DATA_PATH no está definida")
         sys.exit(1)
 
-    directory_path = sys.argv[1]
-    vertical_name = sys.argv[2]
+    if not service_path:
+        logger.error("La variable de entorno FIWARE_SERVICEPATH no está definida")
+        sys.exit(1)
 
-    # FIWARE ServicePath derivado de la vertical
-    service_path = f"/{vertical_name}"
+    service_path = service_path.strip()
+
+    if not service_path.startswith("/"):
+        service_path = f"/{service_path}"
+
+    vertical_name = service_path.lstrip("/")
+
+    if not vertical_name:
+        logger.error("No se pudo deducir la vertical a partir de FIWARE_SERVICEPATH")
+        sys.exit(1)
 
     if not os.path.isdir(directory_path):
         logger.error("El directorio %s no es válido", directory_path)
@@ -92,6 +109,7 @@ def main():
 
     logger.info("Ejecutando ETL para vertical '%s'", vertical_name)
     logger.info("FIWARE ServicePath: %s", service_path)
+    logger.info("DATA_PATH: %s", directory_path)
 
     all_entities = []
 
@@ -169,7 +187,10 @@ def main():
         logger.info("Guardando entidades en SQL: %s", path_sql)
         with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=vertical_name) as store:
             store(all_entities)
-
+        
+        target_schema = os.getenv("FIWARE_SERVICE", "madrid")
+        replace_target_schema(path_sql, target_schema)
+        
         logger.info("Fichero SQL generado correctamente")
         return
 
