@@ -20,7 +20,7 @@ MAGNITUDES_MAP = {
     6:   ("CO", "GP"),        # Monóxido de Carbono
     7:   ("NO", "GQ"),        # Monóxido de Nitrógeno
     8:   ("NO2", "GQ"),       # Dióxido de Nitrógeno
-    9:   ("PM2.5", "GQ"),     # Partículas < 2.5 µm
+    9:   ("PM25", "GQ"),      # Partículas < 2.5 µm
     10:  ("PM10", "GQ"),      # Partículas < 10 µm
     12:  ("NOx", "GQ"),       # Óxidos de Nitrógeno
     14:  ("O3", "GQ"),        # Ozono
