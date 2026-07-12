@@ -26,11 +26,6 @@
 
   "source": {
     "type": "Text",
-    "value": "http://datos.madrid.es"
-  },
-
-  "refPointOfInterest": {
-    "type": "Relationship",
-    "value": "{station_id}"
+    "value": "{source}"
   }
 }

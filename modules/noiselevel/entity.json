@@ -1,0 +1,31 @@
+{
+  "id": "NoiseLevelObserved:Madrid-{station_id}",
+  "type": "NoiseLevelObserved",
+
+  "dateObserved": {
+    "type": "DateTime",
+    "value": "{dateObserved}"
+  },
+
+  "location": {
+    "type": "Text",
+    "value": {
+      "type": "Point",
+      "coordinates": "{coordinates}"
+    }
+  },
+
+  "address": {
+    "type": "PostalAddress",
+    "value": {
+      "addressCountry": "ES",
+      "addressLocality": "Madrid",
+      "streetAddress": "{station_name}"
+    }
+  },
+
+  "source": {
+    "type": "Text",
+    "value": "{source}"
+  }
+}
