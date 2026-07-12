@@ -1,5 +1,5 @@
 {
-  "id": "Madrid-{station_id}",
+  "id": "{station_id}",
   "type": "AirQualityObserved",
 
   "dateObserved": {
