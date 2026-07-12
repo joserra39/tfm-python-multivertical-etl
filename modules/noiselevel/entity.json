@@ -1,6 +1,11 @@
 {
-  "id": "NoiseLevelObserved:Madrid-{station_id}",
+  "id": "{station_id}",
   "type": "NoiseLevelObserved",
+
+  "name": {
+    "type": "Text",
+    "value": "{station_name}"
+  },
 
   "dateObserved": {
     "type": "DateTime",
