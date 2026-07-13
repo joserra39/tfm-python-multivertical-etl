@@ -115,9 +115,41 @@ def build_noise_attributes(row):
 
     return attrs
 
+def load_stations_info(static_csv_path):
+    df = read_csv_with_fallback(static_csv_path)
+
+    required_cols = ["id", "name", "lon", "lat", "heightAverage", "address"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas requeridas en datos_estaticos.csv: {missing}")
+
+    stations = {}
+
+    for _, row in df.iterrows():
+        station_id = str(row["id"]).strip()
+        stations[station_id] = {
+            "name": str(row["name"]).strip(),
+            "coords": [
+                parse_decimal(row["lon"]) or 0.0,
+                parse_decimal(row["lat"]) or 0.0
+            ],
+            "heightAverage": parse_decimal(row["heightAverage"]),
+            "address": str(row["address"]).strip() if not pd.isna(row["address"]) else ""
+        }
+
+    return stations
+
+
 def transform_csv_to_ngsi(file_path):
     df = read_csv_with_fallback(file_path)
     df = normalize_columns(df)
+
+    static_data_path = os.path.join(
+        os.path.dirname(file_path),
+        "datos_estaticos",
+        "datos_estaticos.csv"
+    )
+    stations_info = load_stations_info(static_data_path)
 
     required_cols = ["NMT", "ANO", "MES", "DIA", "TIPO", "LAeq", "L1", "L10", "L50", "L90", "L99"]
     missing = [c for c in required_cols if c not in df.columns]
@@ -128,9 +160,14 @@ def transform_csv_to_ngsi(file_path):
 
     for _, row in df.iterrows():
         station_id = str(row["NMT"]).strip()
-        station_info = STATIONS_INFO.get(
+        station_info = stations_info.get(
             station_id,
-            {"name": f"Estación {station_id}", "coords": [0.0, 0.0]}
+            {
+                "name": f"Estación {station_id}",
+                "coords": [0.0, 0.0],
+                "heightAverage": None,
+                "address": ""
+            }
         )
 
         noise_type_raw = str(row["TIPO"]).strip().upper()
