@@ -21,12 +21,13 @@
   },
 
   "address": {
-    "type": "PostalAddress",
-    "value": {
-      "addressCountry": "ES",
-      "addressLocality": "Madrid",
-      "streetAddress": "{station_name}"
-    }
+    "type": "Text",
+    "value": "{address}"
+  },
+
+  "heightAverage": {
+    "type": "Text",
+    "value": "{heightAverage}"
   },
 
   "source": {
