@@ -34,13 +34,13 @@ def chunked(data, size):
     for i in range(0, len(data), size):
         yield data[i:i + size]
 
-def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
+def save_chunks(entities, output_base_dir, dataset, chunk_size=50):
     output_path = os.path.join(output_base_dir, "../outputs")
     os.makedirs(output_path, exist_ok=True)
 
     for i, chunk in enumerate(chunked(entities, chunk_size)):
         timestamp = int(time.time() * 1000) + i
-        file_name = f"{vertical_name}_{timestamp}.json"
+        file_name = f"{dataset}_{timestamp}.json"
         full_path = os.path.join(output_path, file_name)
 
         with open(full_path, "w", encoding="utf-8") as f:
@@ -82,32 +82,29 @@ def replace_target_schema(sql_file_path: Path, target_schema: str):
 # --------------------------------------------------
 def main():
     directory_path = os.getenv("DATA_PATH")
+    dataset = os.getenv("DATASET")
     service_path = os.getenv("FIWARE_SERVICEPATH")
 
     if not directory_path:
         logger.error("La variable de entorno DATA_PATH no está definida")
+        sys.exit(1)
+    
+    if not dataset:
+        logger.error("La variable de entorno DATASET no está definida")
         sys.exit(1)
 
     if not service_path:
         logger.error("La variable de entorno FIWARE_SERVICEPATH no está definida")
         sys.exit(1)
 
-    service_path = service_path.strip()
-
-    if not service_path.startswith("/"):
-        service_path = f"/{service_path}"
-
-    vertical_name = service_path.lstrip("/")
-
-    if not vertical_name:
-        logger.error("No se pudo deducir la vertical a partir de FIWARE_SERVICEPATH")
-        sys.exit(1)
-
     if not os.path.isdir(directory_path):
         logger.error("El directorio %s no es válido", directory_path)
         sys.exit(1)
 
-    logger.info("Ejecutando ETL para vertical '%s'", vertical_name)
+    if not service_path.startswith("/"):
+        service_path = f"/{service_path}"
+
+    logger.info("Ejecutando ETL para dataset '%s'", dataset)
     logger.info("FIWARE ServicePath: %s", service_path)
     logger.info("DATA_PATH: %s", directory_path)
 
@@ -117,17 +114,17 @@ def main():
     # Dynamic transformer loading
     # --------------------------------------------------
     try:
-        module = importlib.import_module(f"modules.{vertical_name}.transformer")
+        module = importlib.import_module(f"modules.{dataset}.transformer")
         transform_func = getattr(module, "transform_csv_to_ngsi")
     except Exception as e:
-        logger.error("No se pudo cargar el transformer de '%s': %s", vertical_name, e)
+        logger.error("No se pudo cargar el transformer de '%s': %s", dataset, e)
         sys.exit(1)
 
     # --------------------------------------------------
     # Data extraction (CSV o API)
     # --------------------------------------------------
     try:
-        input_files = get_input_files(directory_path, vertical_name)
+        input_files = get_input_files(directory_path, dataset)
     except DataExtractionError as e:
         logger.error("Error en la extracción de datos: %s", e)
         sys.exit(1)
@@ -185,7 +182,7 @@ def main():
         path_sql = Path(os.path.join(directory_path, "../outputs", "inserts.sql"))
 
         logger.info("Guardando entidades en SQL: %s", path_sql)
-        with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=vertical_name) as store:
+        with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=dataset) as store:
             store(all_entities)
         
         target_schema = os.getenv("FIWARE_SERVICE", "madrid")

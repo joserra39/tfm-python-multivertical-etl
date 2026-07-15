@@ -16,17 +16,8 @@ ENTITY_TEMPLATE = load_entity_template(
 SOURCE_URL = "https://datos.madrid.es"
 
 
-def read_csv_with_fallback(file_path):
-    encodings = ["utf-8", "cp1252", "latin1"]
-    last_error = None
-
-    for encoding in encodings:
-        try:
-            return pd.read_csv(file_path, sep=";", dtype=str, encoding=encoding)
-        except UnicodeDecodeError as e:
-            last_error = e
-
-    raise last_error
+def read_csv(file_path):
+    return pd.read_csv(file_path, sep=";", dtype=str, encoding="utf-8")
 
 
 def normalize_text(value):
@@ -34,20 +25,10 @@ def normalize_text(value):
         return ""
     return str(value).strip()
 
-def normalize_hour(hora_texto):
-    hora_texto = normalize_text(hora_texto)
-
-    parts = hora_texto.split(":")
-    if len(parts) >= 2:
-        h = parts[0].zfill(2)
-        m = parts[1].zfill(2)
-        return f"{h}:{m}"
-
-    raise ValueError(f"Formato de HORA no válido: {hora_texto!r}")
-
 
 def normalize_column_name(col):
     col = normalize_text(col)
+
     replacements = {
         "á": "a", "à": "a", "ä": "a", "â": "a",
         "é": "e", "è": "e", "ë": "e", "ê": "e",
@@ -66,7 +47,7 @@ def normalize_column_name(col):
     lower = lower.replace("ã¡", "a")
     lower = lower.replace("ã­", "i")
     lower = lower.replace("ã±", "n")
-    lower = lower.replace("codigo_postal", "codigo_postal")
+
     lower = re.sub(r"[^a-z0-9]+", "_", lower).strip("_")
     return lower
 
@@ -77,43 +58,37 @@ def normalize_columns(df):
     for col in df.columns:
         norm = normalize_column_name(col)
 
-        if norm in ["fecha"]:
+        if norm in ["ano", "anio", "year"]:
+            rename_map[col] = "ANIO"
+        elif norm in ["mes", "month"]:
+            rename_map[col] = "MES"
+        elif norm in ["fecha", "date", "fecha_lectura", "fecha_medida", "periodo"]:
             rename_map[col] = "FECHA"
-        elif norm in ["hora"]:
-            rename_map[col] = "HORA"
-        elif norm in ["identificador"]:
+        elif norm in ["codigo_interno", "id", "identificador", "codigo_edificio", "centro_codigo"]:
             rename_map[col] = "IDENTIFICADOR"
-        elif norm in ["peatones"]:
-            rename_map[col] = "PEATONES"
-        elif norm in ["bicicletas"]:
-            rename_map[col] = "BICICLETAS"
-        elif norm in ["device_id"]:
-            rename_map[col] = "DEVICE_ID"
-        elif norm in ["numero_distrito", "n_mero_distrito"]:
-            rename_map[col] = "NUMERO_DISTRITO"
+        elif norm in ["edificio", "nombre_edificio", "centro", "nombre_centro", "equipamiento"]:
+            rename_map[col] = "BUILDING"
+        elif norm in ["direccion", "domicilio", "via", "calle"]:
+            rename_map[col] = "DIRECCION"
         elif norm in ["distrito"]:
             rename_map[col] = "DISTRITO"
-        elif norm in ["direccion"]:
-            rename_map[col] = "DIRECCION"
-        elif norm in ["nombre_vial"]:
-            rename_map[col] = "NOMBRE_VIAL"
-        elif norm in ["numero"]:
-            rename_map[col] = "NUMERO"
-        elif norm in ["codigo_postal"]:
-            rename_map[col] = "CODIGO_POSTAL"
-        elif norm in ["observaciones_direccion"]:
-            rename_map[col] = "OBSERVACIONES_DIRECCION"
         elif norm in ["latitud", "latitude"]:
             rename_map[col] = "LATITUD"
         elif norm in ["longitud", "longitude"]:
             rename_map[col] = "LONGITUD"
+        elif norm in ["consumo", "consumo_kwh", "energia", "energia_kwh", "electricidad_kwh", "valor"]:
+            rename_map[col] = "ENERGY"
+        elif norm in ["unidad", "unidad_medida"]:
+            rename_map[col] = "ENERGY_UNIT"
+        elif norm in ["tipo", "tipo_medida", "magnitud", "vector_energetico", "suministro"]:
+            rename_map[col] = "MEASUREMENT_TYPE"
         else:
             rename_map[col] = col.strip()
 
     return df.rename(columns=rename_map)
 
 
-def parse_int(value):
+def parse_float(value):
     if pd.isna(value):
         return None
 
@@ -121,8 +96,22 @@ def parse_int(value):
     if text == "":
         return None
 
-    text = text.replace(".", "").replace(",", "")
-    return int(text)
+    text = text.replace(" ", "")
+
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    else:
+        text = text.replace(",", "")
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 
 def parse_coordinate(value):
@@ -150,109 +139,193 @@ def parse_coordinate(value):
     return sign * float(text.replace(",", "."))
 
 
+def parse_month(value):
+    text = normalize_text(value).lower()
+
+    month_map = {
+        "1": 1, "01": 1, "enero": 1, "ene": 1,
+        "2": 2, "02": 2, "febrero": 2, "feb": 2,
+        "3": 3, "03": 3, "marzo": 3, "mar": 3,
+        "4": 4, "04": 4, "abril": 4, "abr": 4,
+        "5": 5, "05": 5, "mayo": 5, "may": 5,
+        "6": 6, "06": 6, "junio": 6, "jun": 6,
+        "7": 7, "07": 7, "julio": 7, "jul": 7,
+        "8": 8, "08": 8, "agosto": 8, "ago": 8,
+        "9": 9, "09": 9, "septiembre": 9, "sep": 9, "setiembre": 9,
+        "10": 10, "octubre": 10, "oct": 10,
+        "11": 11, "noviembre": 11, "nov": 11,
+        "12": 12, "diciembre": 12, "dic": 12
+    }
+
+    return month_map.get(text)
+
+
 def build_date_observed(row):
     fecha = normalize_text(row.get("FECHA"))
-    hora = normalize_hour(row.get("HORA", "00:00"))
-    solo_fecha = fecha.split(maxsplit=1)[0]
-    fecha_hora = f"{solo_fecha} {hora}"
+    anio = normalize_text(row.get("ANIO"))
+    mes = normalize_text(row.get("MES"))
 
-    try:
-        return parse_date(fecha_hora)
-    except Exception as e:
-        print(f"[ERROR PARSE FECHA/HORA] FECHA=[{fecha!r}] | HORA=[{hora!r}] | FECHA_HORA=[{fecha_hora!r}] | error={e}")
-        raise
+    if fecha:
+        try:
+            return parse_date(fecha)
+        except Exception:
+            pass
 
+        try:
+            dt = pd.to_datetime(fecha, dayfirst=True, errors="coerce")
+            if pd.notna(dt):
+                return dt.strftime("%Y-%m-%dT00:00:00Z")
+        except Exception:
+            pass
 
-def build_address(row):
-    direccion = normalize_text(row.get("DIRECCION"))
-    if direccion:
-        return direccion
+    month_num = parse_month(mes)
+    if anio and month_num:
+        try:
+            dt = datetime(int(anio), int(month_num), 1)
+            return dt.strftime("%Y-%m-%dT00:00:00Z")
+        except Exception as e:
+            print(f"[ERROR PARSE ANIO/MES] ANIO=[{anio!r}] MES=[{mes!r}] error={e}")
+            raise
 
-    nombre_vial = normalize_text(row.get("NOMBRE_VIAL"))
-    numero = normalize_text(row.get("NUMERO"))
-    codigo_postal = normalize_text(row.get("CODIGO_POSTAL"))
-
-    parts = [p for p in [nombre_vial, numero] if p]
-    address = " ".join(parts)
-
-    if codigo_postal:
-        address = f"{address}, {codigo_postal} Madrid" if address else f"{codigo_postal} Madrid"
-
-    return address
-
-
-def detect_category_and_intensity(row):
-    peatones = parse_int(row.get("PEATONES"))
-    bicicletas = parse_int(row.get("BICICLETAS"))
-
-    if peatones is not None:
-        return "Peatones", peatones
-
-    if bicicletas is not None:
-        return "Bicicletas", bicicletas
-
-    return None, None
+    raise ValueError(
+        f"No se pudo construir dateObserved. Valores recibidos: "
+        f"FECHA={fecha!r}, ANIO={anio!r}, MES={mes!r}"
+    )
 
 
-#def build_name(category):
-#    if category:
-#        name = "Aforo peatonal" if category == "Peatones" else "Aforo bicicletas"
-#        return f"{name}"
-#    return "Desconocido"
+def build_period(row):
+    fecha = normalize_text(row.get("FECHA"))
+    anio = normalize_text(row.get("ANIO"))
+    mes = normalize_text(row.get("MES"))
+
+    if anio and mes:
+        month_num = parse_month(mes)
+        if month_num:
+            return f"{anio}-{str(month_num).zfill(2)}"
+
+    if fecha:
+        try:
+            dt = pd.to_datetime(fecha, dayfirst=True, errors="coerce")
+            if pd.notna(dt):
+                return dt.strftime("%Y-%m")
+        except Exception:
+            pass
+
+    return ""
+
+
+def build_name(row):
+    building = normalize_text(row.get("BUILDING"))
+    measurement_type = normalize_text(row.get("MEASUREMENT_TYPE"))
+
+    if building and measurement_type:
+        return f"{building} - {measurement_type}"
+
+    if building:
+        return building
+
+    if measurement_type:
+        return measurement_type
+
+    return "ACMeasurement"
+
+
+def build_measurement_type(row):
+    measurement_type = normalize_text(row.get("MEASUREMENT_TYPE"))
+    if measurement_type:
+        return measurement_type
+
+    return "monthlyEnergyConsumption"
+
+
+def build_energy_unit(row):
+    unit = normalize_text(row.get("ENERGY_UNIT"))
+    if unit:
+        return unit
+
+    return "kWh"
+
+
+def build_entity_id(row, date_observed):
+    identifier = normalize_text(row.get("IDENTIFICADOR"))
+    building = normalize_text(row.get("BUILDING"))
+    period = build_period(row)
+
+    base_id = identifier or building
+    if not base_id:
+        raise ValueError("No existe identificador suficiente para construir el id de la entidad")
+
+    safe_base_id = re.sub(r"[^A-Za-z0-9:_-]", "_", base_id)
+    safe_period = re.sub(r"[^A-Za-z0-9:_-]", "_", period) if period else date_observed[:10]
+
+    return f"ACMeasurement:{safe_base_id}:{safe_period}"
 
 
 def transform_csv_to_ngsi(file_path):
-    df = read_csv_with_fallback(file_path)
+    df = read_csv(file_path)
     df = normalize_columns(df)
 
-    required_cols = ["FECHA", "HORA", "IDENTIFICADOR", "LATITUD", "LONGITUD"]
-    missing = [c for c in required_cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"Faltan columnas requeridas en el CSV: {missing}")
+    if "ENERGY" not in df.columns:
+        raise ValueError("El CSV no contiene una columna reconocible de consumo/energía")
 
-    if "PEATONES" not in df.columns and "BICICLETAS" not in df.columns:
-        raise ValueError("El CSV no contiene ni PEATONES ni BICICLETAS")
+    if "FECHA" not in df.columns and ("ANIO" not in df.columns or "MES" not in df.columns):
+        raise ValueError("El CSV debe contener FECHA o bien ANIO y MES")
 
     entities = []
-    previous_key = None
+    seen_ids = set()
+
     for _, row in df.iterrows():
+        energy = parse_float(row.get("ENERGY"))
+        if energy is None:
+            continue
 
-        date_observed = build_date_observed(row)
-        identifier = normalize_text(row.get("IDENTIFICADOR"))
-        lat = parse_coordinate(row.get("LATITUD"))
-        lon = parse_coordinate(row.get("LONGITUD"))
-        category, intensity = detect_category_and_intensity(row)
+        try:
+            date_observed = build_date_observed(row)
+        except Exception:
+            continue
+
+        lat = parse_coordinate(row.get("LATITUD")) if "LATITUD" in df.columns else None
+        lon = parse_coordinate(row.get("LONGITUD")) if "LONGITUD" in df.columns else None
+
+        try:
+            entity_id = build_entity_id(row, date_observed)
+        except Exception:
+            continue
+
+        if entity_id in seen_ids:
+            continue
+
+        seen_ids.add(entity_id)
+
+        coordinates = [lon, lat] if lat is not None and lon is not None else None
+        building = normalize_text(row.get("BUILDING"))
+        address = normalize_text(row.get("DIRECCION"))
         area_served = normalize_text(row.get("DISTRITO"))
-        address = build_address(row)
-        direction = normalize_text(row.get("OBSERVACIONES_DIRECCION"))
-        name = normalize_text(row.get("DEVICE_ID"))
+        measurement_type = build_measurement_type(row)
+        energy_unit = build_energy_unit(row)
+        period = build_period(row)
+        name = build_name(row)
 
-        current_key = (identifier, date_observed)
-        # El Ayto. de Madrid no está devolviendo la hora en UTC y, por este motivo, hay PK duplicados
-        # Se ignora la segunda lectura con el mismo identificador-fecha_hora para que de fallo el .sql
-        if current_key == previous_key:
-            continue
-        if lat is None or lon is None:
-            continue
-        if category is None or intensity is None:
-            continue
+        entity_data = {
+            "entity_id": entity_id,
+            "name": name,
+            "dateObserved": date_observed,
+            "building": building,
+            "address": address,
+            "areaServed": area_served,
+            "measurementType": measurement_type,
+            "energy": energy,
+            "energyUnit": energy_unit,
+            "period": period,
+            "source": SOURCE_URL
+        }
 
-        previous_key  = current_key
+        if coordinates is not None:
+            entity_data["coordinates"] = coordinates
 
         entity = build_entity_from_template(
             ENTITY_TEMPLATE,
-            {
-                "entity_id": f"{identifier}",
-                "name": name,
-                "dateObserved": date_observed,
-                "coordinates": [lon, lat],
-                "address": address,
-                "category": category,
-                "direction": direction,
-                "areaServed": area_served,
-                "intensity": intensity,
-                "source": SOURCE_URL
-            }
+            entity_data
         )
 
         entities.append(entity)

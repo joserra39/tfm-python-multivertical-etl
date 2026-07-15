@@ -130,7 +130,7 @@ def fetch_madrid_api_data() -> List[Dict]:
 
 def write_records_to_temp_csv(
     records: List[Dict],
-    vertical_name: str,
+    dataset: str,
     output_base_dir: str
 ) -> List[str]:
     """
@@ -151,7 +151,7 @@ def write_records_to_temp_csv(
         encoding="utf-8",
         newline="",
         suffix=".csv",
-        prefix=f"{vertical_name}_api_",
+        prefix=f"{dataset}_api_",
         dir=str(output_dir),
         delete=False
     )
@@ -176,7 +176,7 @@ def write_records_to_temp_csv(
     return [temp_file.name]
 
 
-def get_input_files(directory_path: str, vertical_name: str) -> List[str]:
+def get_input_files(directory_path: str, dataset: str) -> List[str]:
     """
     Resuelve el origen de los datos:
     - CSV: devuelve los .csv del directorio indicado
@@ -202,7 +202,7 @@ def get_input_files(directory_path: str, vertical_name: str) -> List[str]:
 
     if data_source == "API":
         records = fetch_madrid_api_data()
-        return write_records_to_temp_csv(records, vertical_name, directory_path)
+        return write_records_to_temp_csv(records, dataset, directory_path)
 
     raise DataExtractionError(
         f"Origen de datos no soportado: {data_source}. Valores válidos: CSV, API"
