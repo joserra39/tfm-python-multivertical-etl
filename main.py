@@ -182,11 +182,8 @@ def main():
         path_sql = Path(os.path.join(directory_path, "../outputs", "inserts.sql"))
 
         logger.info("Guardando entidades en SQL: %s", path_sql)
-        with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=dataset) as store:
+        with tc.sqlFileStore(path=path_sql, subservice=service_path, schema="madrid", namespace=service_path.lstrip("/")) as store:
             store(all_entities)
-        
-        target_schema = os.getenv("FIWARE_SERVICE", "madrid")
-        replace_target_schema(path_sql, target_schema)
         
         logger.info("Fichero SQL generado correctamente")
         return

@@ -52,42 +52,6 @@ def normalize_column_name(col):
     return lower
 
 
-def normalize_columns(df):
-    rename_map = {}
-
-    for col in df.columns:
-        norm = normalize_column_name(col)
-
-        if norm in ["ano", "anio", "year"]:
-            rename_map[col] = "ANIO"
-        elif norm in ["mes", "month"]:
-            rename_map[col] = "MES"
-        elif norm in ["fecha", "date", "fecha_lectura", "fecha_medida", "periodo"]:
-            rename_map[col] = "FECHA"
-        elif norm in ["codigo_interno", "id", "identificador", "codigo_edificio", "centro_codigo"]:
-            rename_map[col] = "IDENTIFICADOR"
-        elif norm in ["edificio", "nombre_edificio", "centro", "nombre_centro", "equipamiento"]:
-            rename_map[col] = "BUILDING"
-        elif norm in ["direccion", "domicilio", "via", "calle"]:
-            rename_map[col] = "DIRECCION"
-        elif norm in ["distrito"]:
-            rename_map[col] = "DISTRITO"
-        elif norm in ["latitud", "latitude"]:
-            rename_map[col] = "LATITUD"
-        elif norm in ["longitud", "longitude"]:
-            rename_map[col] = "LONGITUD"
-        elif norm in ["consumo", "consumo_kwh", "energia", "energia_kwh", "electricidad_kwh", "valor"]:
-            rename_map[col] = "ENERGY"
-        elif norm in ["unidad", "unidad_medida"]:
-            rename_map[col] = "ENERGY_UNIT"
-        elif norm in ["tipo", "tipo_medida", "magnitud", "vector_energetico", "suministro"]:
-            rename_map[col] = "MEASUREMENT_TYPE"
-        else:
-            rename_map[col] = col.strip()
-
-    return df.rename(columns=rename_map)
-
-
 def parse_float(value):
     if pd.isna(value):
         return None
@@ -119,24 +83,19 @@ def parse_coordinate(value):
         return None
 
     text = str(value).strip()
-    if text == "":
+    if not text:
         return None
 
-    if "," in text and "." not in text:
-        return float(text.replace(",", "."))
+    digits = text.replace(".", "").replace(",", "").strip()
 
-    sign = -1 if text.startswith("-") else 1
-    digits = text.replace("-", "").replace(".", "").replace(",", "")
-
-    if not digits.isdigit():
+    if not digits.replace("-", "").isdigit():
         return None
 
-    if len(digits) >= 7:
-        integer_part = digits[:2] if len(digits) >= 8 else digits[:1]
-        decimal_part = digits[2:] if len(digits) >= 8 else digits[1:]
-        return sign * float(f"{integer_part}.{decimal_part}")
+    if len(digits) < 4:
+        return None
 
-    return sign * float(text.replace(",", "."))
+    normalized = digits[:2] + "." + digits[2:]
+    return float(normalized)
 
 
 def parse_month(value):
@@ -161,23 +120,8 @@ def parse_month(value):
 
 
 def build_date_observed(row):
-    fecha = normalize_text(row.get("FECHA"))
-    anio = normalize_text(row.get("ANIO"))
+    anio = normalize_text(row.get("AÑO"))
     mes = normalize_text(row.get("MES"))
-
-    if fecha:
-        try:
-            return parse_date(fecha)
-        except Exception:
-            pass
-
-        try:
-            dt = pd.to_datetime(fecha, dayfirst=True, errors="coerce")
-            if pd.notna(dt):
-                return dt.strftime("%Y-%m-%dT00:00:00Z")
-        except Exception:
-            pass
-
     month_num = parse_month(mes)
     if anio and month_num:
         try:
@@ -189,13 +133,12 @@ def build_date_observed(row):
 
     raise ValueError(
         f"No se pudo construir dateObserved. Valores recibidos: "
-        f"FECHA={fecha!r}, ANIO={anio!r}, MES={mes!r}"
+        f"ANIO={anio!r}, MES={mes!r}"
     )
 
 
 def build_period(row):
-    fecha = normalize_text(row.get("FECHA"))
-    anio = normalize_text(row.get("ANIO"))
+    anio = normalize_text(row.get("AÑO"))
     mes = normalize_text(row.get("MES"))
 
     if anio and mes:
@@ -203,20 +146,12 @@ def build_period(row):
         if month_num:
             return f"{anio}-{str(month_num).zfill(2)}"
 
-    if fecha:
-        try:
-            dt = pd.to_datetime(fecha, dayfirst=True, errors="coerce")
-            if pd.notna(dt):
-                return dt.strftime("%Y-%m")
-        except Exception:
-            pass
-
     return ""
 
 
 def build_name(row):
-    building = normalize_text(row.get("BUILDING"))
-    measurement_type = normalize_text(row.get("MEASUREMENT_TYPE"))
+    building = normalize_text(row.get("EDIFICIO"))
+    measurement_type = normalize_text(row.get("TIPO"))
 
     if building and measurement_type:
         return f"{building} - {measurement_type}"
@@ -231,7 +166,7 @@ def build_name(row):
 
 
 def build_measurement_type(row):
-    measurement_type = normalize_text(row.get("MEASUREMENT_TYPE"))
+    measurement_type = normalize_text(row.get("TIPO"))
     if measurement_type:
         return measurement_type
 
@@ -239,96 +174,107 @@ def build_measurement_type(row):
 
 
 def build_energy_unit(row):
-    unit = normalize_text(row.get("ENERGY_UNIT"))
+    unit = normalize_text(row.get("UNIDADES"))
     if unit:
         return unit
 
     return "kWh"
 
 
-def build_entity_id(row, date_observed):
-    identifier = normalize_text(row.get("IDENTIFICADOR"))
-    building = normalize_text(row.get("BUILDING"))
-    period = build_period(row)
-
-    base_id = identifier or building
+def build_entity_id(row):
+    base_id = normalize_text(row.get("ID"))
+    sensor = normalize_text(row.get("SENSOR"))
+    measurement_class = normalize_text(row.get("CLASE"))
     if not base_id:
-        raise ValueError("No existe identificador suficiente para construir el id de la entidad")
+        raise ValueError(
+            f"No se puede construir el entity_id porque falta ID. "
+            f"ID={base_id!r}"
+        )
 
-    safe_base_id = re.sub(r"[^A-Za-z0-9:_-]", "_", base_id)
-    safe_period = re.sub(r"[^A-Za-z0-9:_-]", "_", period) if period else date_observed[:10]
+    parts = [base_id, sensor, measurement_class]
+    raw_entity_id = "_".join([p for p in parts if p])
+    safe_entity_id = re.sub(r"[^A-Za-z0-9:_-]", "_", raw_entity_id)
 
-    return f"ACMeasurement:{safe_base_id}:{safe_period}"
+    return safe_entity_id
 
 
 def transform_csv_to_ngsi(file_path):
     df = read_csv(file_path)
-    df = normalize_columns(df)
 
-    if "ENERGY" not in df.columns:
-        raise ValueError("El CSV no contiene una columna reconocible de consumo/energía")
-
-    if "FECHA" not in df.columns and ("ANIO" not in df.columns or "MES" not in df.columns):
-        raise ValueError("El CSV debe contener FECHA o bien ANIO y MES")
+    # Validaciones mínimas sobre cabeceras originales
+    required_cols = ["AÑO", "MES", "ID", "TIPOEDIFICIO", "EDIFICIO", "DIRECCION", "DISTRITO", "CÓDIGO DISTRITO", "BARRIO", "CÓDIGO BARRIO", "COORDENADA-X", "COORDENADA-Y", "LONGITUD", "LATITUD", "SENSOR", "TIPO", "CLASE", "GRUPO", "UNIDADES", "CONSUMO"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas requeridas en el CSV: {missing}")
 
     entities = []
-    seen_ids = set()
-
+    discard_energy_none = 0
+    discard_energy = 0
+    discard_id_exception = 0
     for _, row in df.iterrows():
-        energy = parse_float(row.get("ENERGY"))
+        consumo = row.get("CONSUMO")
+        energy = parse_float(consumo)
         if energy is None:
+            if consumo is None:
+                discard_energy += 1
+            else:
+                discard_energy_none += 1
             continue
-
+            # 511 registros que tienen "NO DATA" en consumo
         try:
-            date_observed = build_date_observed(row)
+            entity_id = build_entity_id(row)
         except Exception:
+            print ("entity_id Exception")
+            discard_id_exception += 1
             continue
 
         lat = parse_coordinate(row.get("LATITUD")) if "LATITUD" in df.columns else None
         lon = parse_coordinate(row.get("LONGITUD")) if "LONGITUD" in df.columns else None
-
-        try:
-            entity_id = build_entity_id(row, date_observed)
-        except Exception:
-            continue
-
-        if entity_id in seen_ids:
-            continue
-
-        seen_ids.add(entity_id)
-
         coordinates = [lon, lat] if lat is not None and lon is not None else None
-        building = normalize_text(row.get("BUILDING"))
+        building_id = normalize_text(row.get("ID"))
+        building_name = normalize_text(row.get("EDIFICIO"))
         address = normalize_text(row.get("DIRECCION"))
-        area_served = normalize_text(row.get("DISTRITO"))
         measurement_type = build_measurement_type(row)
         energy_unit = build_energy_unit(row)
         period = build_period(row)
         name = build_name(row)
-
-        entity_data = {
-            "entity_id": entity_id,
-            "name": name,
-            "dateObserved": date_observed,
-            "building": building,
-            "address": address,
-            "areaServed": area_served,
-            "measurementType": measurement_type,
-            "energy": energy,
-            "energyUnit": energy_unit,
-            "period": period,
-            "source": SOURCE_URL
-        }
-
-        if coordinates is not None:
-            entity_data["coordinates"] = coordinates
+        date_observed = build_date_observed(row)
+        district = normalize_text(row.get("DISTRITO"))
+        neighborhood = normalize_text(row.get("BARRIO"))
+        sensor = normalize_text(row.get("SENSOR"))
+        sensor_type = normalize_text(row.get("TIPO"))
+        measurement_class = normalize_text(row.get("CLASE"))
+        measurement_group = normalize_text(row.get("GRUPO"))
 
         entity = build_entity_from_template(
             ENTITY_TEMPLATE,
-            entity_data
+            {
+                "entity_id": entity_id,
+                "name": name,
+                "dateObserved": date_observed,
+                "buildingId": building_id,
+                "buildingName": building_name,
+                "address": address,
+                "measurementType": measurement_type,
+                "energy": energy,
+                "energyUnit": energy_unit,
+                "period": period,
+                "source": SOURCE_URL,
+                "coordinates": coordinates,
+                "district": district,
+                "neighborhood": neighborhood,
+                "sensor": sensor,
+                "sensorType": sensor_type,
+                "measurementClass": measurement_class,
+                "measurementGroup": measurement_group
+            }
         )
 
         entities.append(entity)
 
+    print(f"Descartadas por CONSUMO no parseable: {discard_energy}")
+    print(f"Descartadas por CONSUMO vacio: {discard_energy_none}")
+    print(f"Descartadas por error en ID: {discard_id_exception}")
+    print(f"Total filas CSV: {len(df)}")
     print(f"Entidades generadas: {len(entities)}")
     return entities

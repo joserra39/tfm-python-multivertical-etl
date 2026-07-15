@@ -1,5 +1,5 @@
 {
-  "id": "{station_id}",
+  "id": "{entity_id}",
   "type": "ACMeasurement",
 
   "name": {
@@ -30,13 +30,44 @@
     "value": "{address}"
   },
 
-  "building": {
+  "buildingId": {
     "type": "Text",
-    "value": "{building}"
+    "value": "{buildingId}"
   },
-  "areaServed": {
+
+  "buildingName": {
     "type": "Text",
-    "value": "{areaServed}"
+    "value": "{buildingName}"
+  },
+
+  "district": {
+    "type": "Text",
+    "value": "{district}"
+  },
+
+  "neighborhood": {
+    "type": "Text",
+    "value": "{neighborhood}"
+  },
+
+  "sensor": {
+    "type": "Text",
+    "value": "{sensor}"
+  },
+
+  "sensorType": {
+    "type": "Text",
+    "value": "{sensorType}"
+  },
+
+  "measurementClass": {
+    "type": "Text",
+    "value": "{measurementClass}"
+  },
+
+  "measurementGroup": {
+    "type": "Text",
+    "value": "{measurementGroup}"
   },
 
   "measurementType": {
