@@ -4,7 +4,7 @@
 
   "name": {
     "type": "Text",
-    "value": "{station_name}"
+    "value": "{name}"
   },
 
   "dateObserved": {
@@ -20,13 +20,42 @@
     }
   },
 
+  "source": {
+    "type": "Text",
+    "value": "{source}"
+  },
+
   "address": {
     "type": "Text",
     "value": "{address}"
   },
 
-  "source": {
+  "building": {
     "type": "Text",
-    "value": "{source}"
+    "value": "{building}"
+  },
+  "areaServed": {
+    "type": "Text",
+    "value": "{areaServed}"
+  },
+
+  "measurementType": {
+    "type": "Text",
+    "value": "{measurementType}"
+  },
+
+  "energy": {
+    "type": "Number",
+    "value": "{energy}"
+  },
+
+  "energyUnit": {
+    "type": "Text",
+    "value": "{energyUnit}"
+  },
+
+  "period": {
+    "type": "Text",
+    "value": "{period}"
   }
 }
