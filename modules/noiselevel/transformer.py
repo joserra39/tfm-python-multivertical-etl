@@ -157,6 +157,8 @@ def transform_csv_to_ngsi(file_path):
                 "dateObserved": date_observed,
                 "coordinates": station_info["coords"],
                 "station_name": station_info["name"],
+                "address": station_info["address"],
+                "heightAverage": station_info["heightAverage"],
                 "source": SOURCE_URL
             }
         )

@@ -1,0 +1,32 @@
+{
+  "id": "{station_id}",
+  "type": "ACMeasurement",
+
+  "name": {
+    "type": "Text",
+    "value": "{station_name}"
+  },
+
+  "dateObserved": {
+    "type": "DateTime",
+    "value": "{dateObserved}"
+  },
+
+  "location": {
+    "type": "Text",
+    "value": {
+      "type": "Point",
+      "coordinates": "{coordinates}"
+    }
+  },
+
+  "address": {
+    "type": "Text",
+    "value": "{address}"
+  },
+
+  "source": {
+    "type": "Text",
+    "value": "{source}"
+  }
+}

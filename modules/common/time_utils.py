@@ -22,7 +22,8 @@ def build_iso_datetime(year, month, day, hour=None, minute=0):
     else:
         # Protección básica: nunca horas negativas
         h = max(hour - 1, 0)
-
+        
+    # h = 0 if hour is None else hour
     return datetime(year, month, day, h, minute).isoformat()
 
 def build_daily_iso_datetime(year, month, day):
@@ -30,3 +31,7 @@ def build_daily_iso_datetime(year, month, day):
     Fecha ISO para datos diarios (00:00 del día)
     """
     return datetime(year, month, day, 0, 0).isoformat()
+
+def parse_date(fecha_texto, formato_entrada="%d/%m/%Y %H:%M", formato_salida="%Y-%m-%dT%H:%M:%S"):
+    dt = datetime.strptime(fecha_texto, formato_entrada)
+    return dt.strftime(formato_salida)

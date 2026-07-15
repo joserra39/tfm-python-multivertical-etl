@@ -35,7 +35,7 @@ def chunked(data, size):
         yield data[i:i + size]
 
 def save_chunks(entities, output_base_dir, vertical_name, chunk_size=50):
-    output_path = os.path.join(output_base_dir, "outputs")
+    output_path = os.path.join(output_base_dir, "../outputs")
     os.makedirs(output_path, exist_ok=True)
 
     for i, chunk in enumerate(chunked(entities, chunk_size)):
@@ -182,7 +182,7 @@ def main():
                         attr['value'] = json.dumps(attr['value'])
             entities_for_sql.append(sql_ready_entity)
 
-        path_sql = Path(os.path.join(directory_path, "outputs", "inserts.sql"))
+        path_sql = Path(os.path.join(directory_path, "../outputs", "inserts.sql"))
 
         logger.info("Guardando entidades en SQL: %s", path_sql)
         with tc.sqlFileStore(path=path_sql, subservice=service_path, namespace=vertical_name) as store:

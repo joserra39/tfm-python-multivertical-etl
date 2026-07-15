@@ -1,0 +1,52 @@
+{
+  "id": "{entity_id}",
+  "type": "CrowdFlowObserved",
+
+  "name": {
+    "type": "Text",
+    "value": "{name}"
+  },
+
+  "dateObserved": {
+    "type": "DateTime",
+    "value": "{dateObserved}"
+  },
+
+  "location": {
+    "type": "Text",
+    "value": {
+      "type": "Point",
+      "coordinates": "{coordinates}"
+    }
+  },
+
+  "address": {
+    "type": "Text",
+    "value": "{address}"
+  },
+
+  "category": {
+    "type": "Text",
+    "value": "{category}"
+  },
+
+  "areaServed": {
+    "type": "Text",
+    "value": "{areaServed}"
+  },
+
+  "direction": {
+    "type": "Text",
+    "value": "{direction}"
+  },
+
+  "intensity": {
+    "type": "Number",
+    "value": "{intensity}"
+  },
+
+  "source": {
+    "type": "Text",
+    "value": "{source}"
+  }
+}
