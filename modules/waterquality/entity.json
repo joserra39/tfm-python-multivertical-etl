@@ -1,10 +1,10 @@
 {
-  "id": "{station_id}",
+  "id": "{entity_id}",
   "type": "WaterQualityObserved",
 
   "name": {
     "type": "Text",
-    "value": "{station_name}"
+    "value": "{name}"
   },
 
   "dateObserved": {
@@ -20,13 +20,38 @@
     }
   },
 
-  "address": {
-    "type": "Text",
-    "value": "{address}"
-  },
-
   "source": {
     "type": "Text",
     "value": "{source}"
+  },
+
+  "period": {
+    "type": "Text",
+    "value": "{period}"
+  },
+
+  "fortnight": {
+    "type": "Text",
+    "value": "{fortnight}"
+  },
+
+  "biochemicalOxygenDemand5": {
+    "type": "Number",
+    "value": "{biochemicalOxygenDemand5}"
+  },
+
+  "suspendedSolids": {
+    "type": "Number",
+    "value": "{suspendedSolids}"
+  },
+
+  "totalPhosphorus": {
+    "type": "Number",
+    "value": "{totalPhosphorus}"
+  },
+
+  "totalNitrogen": {
+    "type": "Number",
+    "value": "{totalNitrogen}"
   }
 }
