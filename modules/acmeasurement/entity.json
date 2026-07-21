@@ -88,5 +88,10 @@
   "period": {
     "type": "Text",
     "value": "{period}"
+  },
+
+  "isd": {
+    "type": "Number",
+    "value": "{isd}"
   }
 }

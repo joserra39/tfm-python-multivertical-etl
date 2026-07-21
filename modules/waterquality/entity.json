@@ -53,5 +53,15 @@
   "totalNitrogen": {
     "type": "Number",
     "value": "{totalNitrogen}"
+  },
+
+  "district": {
+    "type": "Text",
+    "value": "{district}"
+  },
+
+  "isd": {
+    "type": "Number",
+    "value": "{isd}"
   }
 }

@@ -48,5 +48,15 @@
   "source": {
     "type": "Text",
     "value": "{source}"
+  },
+
+  "district": {
+    "type": "Text",
+    "value": "{district}"
+  },
+
+  "isd": {
+    "type": "Number",
+    "value": "{isd}"
   }
 }
