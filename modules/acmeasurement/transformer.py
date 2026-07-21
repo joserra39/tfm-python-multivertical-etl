@@ -8,6 +8,7 @@ from modules.common.entity_builder import (
     load_entity_template,
     build_entity_from_template
 )
+from modules.common.isd_calculator import calculate_isd_energy
 
 ENTITY_TEMPLATE = load_entity_template(
     os.path.join(os.path.dirname(__file__), "entity.json")
@@ -245,6 +246,7 @@ def transform_csv_to_ngsi(file_path):
         sensor_type = normalize_text(row.get("TIPO"))
         measurement_class = normalize_text(row.get("CLASE"))
         measurement_group = normalize_text(row.get("GRUPO"))
+        isd = calculate_isd_energy(energy)
 
         entity = build_entity_from_template(
             ENTITY_TEMPLATE,
@@ -266,7 +268,8 @@ def transform_csv_to_ngsi(file_path):
                 "sensor": sensor,
                 "sensorType": sensor_type,
                 "measurementClass": measurement_class,
-                "measurementGroup": measurement_group
+                "measurementGroup": measurement_group,
+                "isd": isd
             }
         )
 

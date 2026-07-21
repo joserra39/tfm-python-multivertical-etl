@@ -34,6 +34,66 @@
     "value": "{district}"
   },
 
+  "nivelIcaSO2": {
+    "type": "Number",
+    "value": "{nivelIcaSO2}"
+  },
+
+  "categoriaIcaSO2": {
+    "type": "Text",
+    "value": "{categoriaIcaSO2}"
+  },
+
+  "nivelIcaNO2": {
+    "type": "Number",
+    "value": "{nivelIcaNO2}"
+  },
+
+  "categoriaIcaNO2": {
+    "type": "Text",
+    "value": "{categoriaIcaNO2}"
+  },
+
+  "nivelIcaPM25": {
+    "type": "Number",
+    "value": "{nivelIcaPM25}"
+  },
+
+  "categoriaIcaPM25": {
+    "type": "Text",
+    "value": "{categoriaIcaPM25}"
+  },
+
+  "nivelIcaPM10": {
+    "type": "Number",
+    "value": "{nivelIcaPM10}"
+  },
+
+  "categoriaIcaPM10": {
+    "type": "Text",
+    "value": "{categoriaIcaPM10}"
+  },
+
+  "nivelIcaO3": {
+    "type": "Number",
+    "value": "{nivelIcaO3}"
+  },
+
+  "categoriaIcaO3": {
+    "type": "Text",
+    "value": "{categoriaIcaO3}"
+  },
+
+  "nivelIcaGeneral": {
+    "type": "Number",
+    "value": "{nivelIcaGeneral}"
+  },
+
+  "categoriaIcaGeneral": {
+    "type": "Text",
+    "value": "{categoriaIcaGeneral}"
+  },
+
   "isd": {
     "type": "Number",
     "value": "{isd}"

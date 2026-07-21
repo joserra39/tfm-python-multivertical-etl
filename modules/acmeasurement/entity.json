@@ -40,11 +40,6 @@
     "value": "{buildingName}"
   },
 
-  "district": {
-    "type": "Text",
-    "value": "{district}"
-  },
-
   "neighborhood": {
     "type": "Text",
     "value": "{neighborhood}"
@@ -88,6 +83,11 @@
   "period": {
     "type": "Text",
     "value": "{period}"
+  },
+  
+  "district": {
+    "type": "Text",
+    "value": "{district}"
   },
 
   "isd": {
