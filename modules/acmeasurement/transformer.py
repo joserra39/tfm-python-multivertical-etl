@@ -14,13 +14,17 @@ ENTITY_TEMPLATE = load_entity_template(
     os.path.join(os.path.dirname(__file__), "entity.json")
 )
 
-SOURCE_URL = "https://datos.madrid.es"
-
-
 def read_csv(file_path):
     return pd.read_csv(file_path, sep=";", dtype=str, encoding="utf-8")
 
-
+def parse_decimal(value):
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return float(str(value).replace(",", ".").strip())
+    except (ValueError, TypeError):
+        return None
+    
 def normalize_text(value):
     if pd.isna(value):
         return ""
@@ -198,8 +202,38 @@ def build_entity_id(row):
 
     return safe_entity_id
 
+def load_stations_info(static_csv_path):
+    df = read_csv(static_csv_path)
+
+    required_cols = ["id", "lon", "lat", "district"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas requeridas en datos_estaticos.csv: {missing}")
+
+    stations = {}
+
+    for _, row in df.iterrows():
+        station_id = str(row["id"]).strip()
+        stations[station_id] = {
+            "coords": [
+                parse_decimal(row["lon"]) or 0.0,
+                parse_decimal(row["lat"]) or 0.0
+            ],
+            "district": str(row["district"]).strip() if not pd.isna(row["district"]) else ""
+        }
+
+    return stations
 
 def transform_csv_to_ngsi(directory_path, file_path):
+
+    stations_info = load_stations_info(
+        os.path.join(
+            directory_path,
+            "datos_estaticos",
+            "datos_estaticos.csv"
+        )
+    )
+        
     df = read_csv(file_path)
 
     # Validaciones mínimas sobre cabeceras originales
@@ -229,10 +263,16 @@ def transform_csv_to_ngsi(directory_path, file_path):
             discard_id_exception += 1
             continue
 
-        lat = parse_coordinate(row.get("LATITUD")) if "LATITUD" in df.columns else None
-        lon = parse_coordinate(row.get("LONGITUD")) if "LONGITUD" in df.columns else None
-        coordinates = [lon, lat] if lat is not None and lon is not None else None
         building_id = normalize_text(row.get("ID"))
+        station_info = stations_info.get(
+            building_id,
+            {
+                "coords": [0.0, 0.0],
+                "district": ""
+            }
+        )
+        coordinates = station_info["coords"]
+        district = station_info["district"]
         building_name = normalize_text(row.get("EDIFICIO"))
         address = normalize_text(row.get("DIRECCION"))
         measurement_type = build_measurement_type(row)
@@ -240,7 +280,6 @@ def transform_csv_to_ngsi(directory_path, file_path):
         period = build_period(row)
         name = build_name(row)
         date_observed = build_date_observed(row)
-        district = normalize_text(row.get("DISTRITO"))
         neighborhood = normalize_text(row.get("BARRIO"))
         sensor = normalize_text(row.get("SENSOR"))
         sensor_type = normalize_text(row.get("TIPO"))
@@ -261,7 +300,7 @@ def transform_csv_to_ngsi(directory_path, file_path):
                 "energy": energy,
                 "energyUnit": energy_unit,
                 "period": period,
-                "source": SOURCE_URL,
+                "source": "Ayuntamiento de Madrid",
                 "coordinates": coordinates,
                 "district": district,
                 "neighborhood": neighborhood,

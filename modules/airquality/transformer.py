@@ -51,7 +51,6 @@ def parse_decimal(value):
         return None
 
 def load_stations_info(static_csv_path):
-    print(f"load_stations_info(static_csv_path): {static_csv_path}")
     df = read_csv(static_csv_path)
 
     required_cols = ["id", "name", "lon", "lat", "district"]
