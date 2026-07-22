@@ -143,6 +143,7 @@ def main():
     for file_path in input_files:
         logger.info("Procesando entrada %s", file_path)
         try:
+            logger.info(f"Path de datos_estaticos: {static_data_directory_path}")
             entities = transform_func(static_data_directory_path, file_path)
             all_entities.extend(entities)
         except Exception as e:
