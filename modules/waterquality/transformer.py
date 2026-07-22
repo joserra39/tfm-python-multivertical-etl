@@ -168,7 +168,7 @@ def infer_year_from_filename(file_path):
     return None
 
 
-def transform_csv_to_ngsi(file_path):
+def transform_csv_to_ngsi(directory_path, file_path):
     df = read_csv(file_path)
 
     static_data_path = os.path.join(
