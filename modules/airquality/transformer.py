@@ -48,6 +48,7 @@ def parse_decimal(value):
         return None
 
 def load_stations_info(static_csv_path):
+    print(f"load_stations_info(static_csv_path): {static_csv_path}")
     df = read_csv(static_csv_path)
 
     required_cols = ["id", "name", "lon", "lat", "district"]
@@ -204,10 +205,12 @@ def calculate_isd_airquality(nivelIcaGeneral):
     return round(max(0.0, min(1.0, isd)), 4)
 
 def transform_csv_to_ngsi(file_path):
+
+    print(f"os.path.dirname(file_path): {os.path.dirname(file_path)}")
     stations_info = load_stations_info(
         os.path.join(
             os.path.dirname(file_path),
-            "datos_estaticos",
+            "../datos_estaticos",
             "datos_estaticos.csv"
         )
     )
