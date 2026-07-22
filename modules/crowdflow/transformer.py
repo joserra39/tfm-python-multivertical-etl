@@ -201,7 +201,7 @@ def detect_category_and_intensity(row):
 #    return "Desconocido"
 
 
-def transform_csv_to_ngsi(directory_path, file_path):
+def transform_csv_to_ngsi(static_data_directory_path, file_path):
     df = read_csv_with_fallback(file_path)
     df = normalize_columns(df)
 

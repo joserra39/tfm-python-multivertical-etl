@@ -199,7 +199,7 @@ def build_entity_id(row):
     return safe_entity_id
 
 
-def transform_csv_to_ngsi(directory_path, file_path):
+def transform_csv_to_ngsi(static_data_directory_path, file_path):
     df = read_csv(file_path)
 
     # Validaciones mínimas sobre cabeceras originales

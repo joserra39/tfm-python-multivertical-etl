@@ -82,6 +82,7 @@ def replace_target_schema(sql_file_path: Path, target_schema: str):
 # --------------------------------------------------
 def main():
     directory_path = os.getenv("DATA_PATH")
+    static_data_directory_path = directory_path
     dataset = os.getenv("DATASET")
     service_path = os.getenv("FIWARE_SERVICEPATH")
 
@@ -142,7 +143,7 @@ def main():
     for file_path in input_files:
         logger.info("Procesando entrada %s", file_path)
         try:
-            entities = transform_func(directory_path, file_path)
+            entities = transform_func(static_data_directory_path, file_path)
             all_entities.extend(entities)
         except Exception as e:
             logger.error("Error procesando %s: %s", file_path, e)
