@@ -207,12 +207,11 @@ def calculate_isd_airquality(nivelIcaGeneral):
     isd = (6 - nivel) / 5
     return round(max(0.0, min(1.0, isd)), 4)
 
-def transform_csv_to_ngsi(static_data_directory_path, file_path):
+def transform_csv_to_ngsi(directory_path, file_path):
 
-    logger.info(f"Path de datos_estaticos: {os.path.dirname(static_data_directory_path)}")
     stations_info = load_stations_info(
         os.path.join(
-            os.path.dirname(static_data_directory_path),
+            directory_path,
             "datos_estaticos",
             "datos_estaticos.csv"
         )

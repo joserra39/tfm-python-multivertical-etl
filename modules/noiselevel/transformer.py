@@ -106,12 +106,12 @@ def load_stations_info(static_csv_path):
     return stations
 
 
-def transform_csv_to_ngsi(static_data_directory_path, file_path):
+def transform_csv_to_ngsi(directory_path, file_path):
     df = read_csv_with_fallback(file_path)
     df = normalize_columns(df)
 
     static_data_path = os.path.join(
-        os.path.dirname(static_data_directory_path),
+        directory_path,
         "datos_estaticos",
         "datos_estaticos.csv"
     )
