@@ -82,7 +82,7 @@ def replace_target_schema(sql_file_path: Path, target_schema: str):
 # --------------------------------------------------
 def main():
     directory_path = os.getenv("DATA_PATH")
-    static_data_directory_path = directory_path
+    static_data_directory_path = os.getenv("DATA_PATH")
     dataset = os.getenv("DATASET")
     service_path = os.getenv("FIWARE_SERVICEPATH")
 
