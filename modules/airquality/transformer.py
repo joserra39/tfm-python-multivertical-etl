@@ -1,5 +1,8 @@
 import os
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 from modules.common.entity_builder import (
     load_entity_template,
@@ -206,7 +209,7 @@ def calculate_isd_airquality(nivelIcaGeneral):
 
 def transform_csv_to_ngsi(directory_path, file_path):
 
-    print(f"os.path.dirname(file_path): {os.path.dirname(directory_path)}")
+    logger.info(f"os.path.dirname(directory_path): {os.path.dirname(directory_path)}")
     stations_info = load_stations_info(
         os.path.join(
             os.path.dirname(directory_path),
