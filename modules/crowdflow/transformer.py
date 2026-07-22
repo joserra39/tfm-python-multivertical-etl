@@ -8,13 +8,11 @@ from modules.common.entity_builder import (
     load_entity_template,
     build_entity_from_template
 )
+from modules.common.isd_calculator import calculate_isd_crowdflow
 
 ENTITY_TEMPLATE = load_entity_template(
     os.path.join(os.path.dirname(__file__), "entity.json")
 )
-
-SOURCE_URL = "https://datos.madrid.es"
-
 
 def read_csv_with_fallback(file_path):
     encodings = ["utf-8", "cp1252", "latin1"]
@@ -27,7 +25,6 @@ def read_csv_with_fallback(file_path):
             last_error = e
 
     raise last_error
-
 
 def normalize_text(value):
     if pd.isna(value):
@@ -193,15 +190,51 @@ def detect_category_and_intensity(row):
 
     return None, None
 
+def read_csv(file_path):
+    return pd.read_csv(file_path, sep=";", dtype=str, encoding="utf-8")
 
-#def build_name(category):
-#    if category:
-#        name = "Aforo peatonal" if category == "Peatones" else "Aforo bicicletas"
-#        return f"{name}"
-#    return "Desconocido"
+def parse_decimal(value):
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return float(str(value).replace(",", ".").strip())
+    except (ValueError, TypeError):
+        return None
+    
+def load_stations_info(static_csv_path):
+    df = read_csv(static_csv_path)
 
+    required_cols = ["id", "address", "lon", "lat", "district"]
+
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas requeridas en datos_estaticos.csv: {missing}")
+
+    stations = {}
+
+    for _, row in df.iterrows():
+        station_id = str(row["id"]).strip()
+        stations[station_id] = {
+            "address": str(row["address"]).strip(),
+            "coords": [
+                parse_decimal(row["lon"]) or 0.0,
+                parse_decimal(row["lat"]) or 0.0
+            ],
+            "district": str(row["district"]).strip() if not pd.isna(row["district"]) else ""
+        }
+
+    return stations
 
 def transform_csv_to_ngsi(directory_path, file_path):
+
+    stations_info = load_stations_info(
+        os.path.join(
+            directory_path,
+            "datos_estaticos",
+            "datos_estaticos.csv"
+        )
+    )
+        
     df = read_csv_with_fallback(file_path)
     df = normalize_columns(df)
 
@@ -216,23 +249,25 @@ def transform_csv_to_ngsi(directory_path, file_path):
     entities = []
     previous_key = None
     for _, row in df.iterrows():
-
-        date_observed = build_date_observed(row)
         identifier = normalize_text(row.get("IDENTIFICADOR"))
-        lat = parse_coordinate(row.get("LATITUD"))
-        lon = parse_coordinate(row.get("LONGITUD"))
+        station_info = stations_info.get(
+            identifier,
+            {
+                "address": build_address(row),
+                "coords": [parse_coordinate(row.get("LONGITUD")), parse_coordinate(row.get("LATITUD"))],
+                "district": normalize_text(row.get("DISTRITO"))
+            }
+        )
+        date_observed = build_date_observed(row)
         category, intensity = detect_category_and_intensity(row)
-        area_served = normalize_text(row.get("DISTRITO"))
-        address = build_address(row)
         direction = normalize_text(row.get("OBSERVACIONES_DIRECCION"))
         name = normalize_text(row.get("DEVICE_ID"))
+        isd = calculate_isd_crowdflow(category, intensity)
 
         current_key = (identifier, date_observed)
         # El Ayto. de Madrid no está devolviendo la hora en UTC y, por este motivo, hay PK duplicados
         # Se ignora la segunda lectura con el mismo identificador-fecha_hora para que de fallo el .sql
         if current_key == previous_key:
-            continue
-        if lat is None or lon is None:
             continue
         if category is None or intensity is None:
             continue
@@ -245,13 +280,14 @@ def transform_csv_to_ngsi(directory_path, file_path):
                 "entity_id": f"{identifier}",
                 "name": name,
                 "dateObserved": date_observed,
-                "coordinates": [lon, lat],
-                "address": address,
+                "coordinates": station_info["coords"],
+                "district": station_info["district"],
+                "address": station_info["address"],
                 "category": category,
                 "direction": direction,
-                "areaServed": area_served,
                 "intensity": intensity,
-                "source": SOURCE_URL
+                "source": "Ayuntamiento de Madrid",
+                "isd": isd
             }
         )
 

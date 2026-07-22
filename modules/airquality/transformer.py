@@ -9,6 +9,7 @@ from modules.common.entity_builder import (
     build_entity_from_template
 )
 from modules.common.time_utils import build_iso_datetime
+from modules.common.isd_calculator import calculate_isd_airquality
 
 ENTITY_TEMPLATE = load_entity_template(
     os.path.join(os.path.dirname(__file__), "entity.json")
@@ -190,21 +191,6 @@ def calculate_ica_levels_and_categories(values):
         "nivelIcaGeneral": nivel_general,
         **categorias
     }
-
-def calculate_isd_airquality(nivelIcaGeneral):
-    try:
-        nivel = int(nivelIcaGeneral)
-    except (TypeError, ValueError):
-        return None
-
-    if nivel <= 1:
-        return 1.0
-
-    if nivel >= 6:
-        return 0.0
-
-    isd = (6 - nivel) / 5
-    return round(max(0.0, min(1.0, isd)), 4)
 
 def transform_csv_to_ngsi(directory_path, file_path):
 

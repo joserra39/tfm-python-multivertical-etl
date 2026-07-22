@@ -30,11 +30,6 @@
     "value": "{category}"
   },
 
-  "areaServed": {
-    "type": "Text",
-    "value": "{areaServed}"
-  },
-
   "direction": {
     "type": "Text",
     "value": "{direction}"
