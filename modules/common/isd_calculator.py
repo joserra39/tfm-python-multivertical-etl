@@ -2,7 +2,8 @@
 
 ENERGY_GOOD_THRESHOLD = 6732.25
 ENERGY_BAD_THRESHOLD = 78369.40
-
+TRANSPORT_PE_MAX_REFERENCE = 2300
+TRANSPORT_BI_MAX_REFERENCE = 50
 
 # ---- Energía ----
 
@@ -42,8 +43,8 @@ def calculate_isd_crowdflow(category, intensity):
         return None
 
     max_reference = {
-        "Peatones": 600.0,
-        "Bicicletas": 300.0
+        "Peatones": TRANSPORT_PE_MAX_REFERENCE,
+        "Bicicletas": TRANSPORT_BI_MAX_REFERENCE
     }
 
     max_val = max_reference.get(category)
@@ -54,4 +55,4 @@ def calculate_isd_crowdflow(category, intensity):
 
     isd = 1.0 - normalized
 
-    return max(0.0, min(1.0, round(isd, 4)))
+    return round(max(0.0, min(1.0, isd)), 4)
