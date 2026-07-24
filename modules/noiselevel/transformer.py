@@ -6,12 +6,11 @@ from modules.common.entity_builder import (
     build_entity_from_template
 )
 from modules.common.time_utils import build_iso_datetime
+from modules.common.isd_calculator import calculate_isd_noiselevel
 
 ENTITY_TEMPLATE = load_entity_template(
     os.path.join(os.path.dirname(__file__), "entity.json")
 )
-
-SOURCE_URL = "https://datos.madrid.es"
 
 NOISE_TYPE_CONFIG = {
     "D": ("day", 7, 0),
@@ -38,10 +37,14 @@ def parse_decimal(value):
 
     if isinstance(value, str):
         value = value.strip().replace(",", ".")
-        if value == "":
+
+        if value == "" or value.upper() in {"N/D", "ND", "N/A"}:
             return None
 
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 def normalize_columns(df):
     rename_map = {}
@@ -68,7 +71,7 @@ def normalize_columns(df):
 def build_noise_attributes(row):
     attrs = {}
 
-    for field in ["LAeq", "L1", "L10", "L50", "L90", "L99"]:
+    for field in ["L1", "L10", "L50", "L90", "L99"]:
         value = parse_decimal(row.get(field))
         if value is not None:
             attrs[field] = {
@@ -84,7 +87,7 @@ def build_noise_attributes(row):
 def load_stations_info(static_csv_path):
     df = read_csv_with_fallback(static_csv_path)
 
-    required_cols = ["id", "name", "lon", "lat", "heightAverage", "address"]
+    required_cols = ["id", "name", "lon", "lat", "heightAverage", "address", "district"]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Faltan columnas requeridas en datos_estaticos.csv: {missing}")
@@ -100,11 +103,22 @@ def load_stations_info(static_csv_path):
                 parse_decimal(row["lat"]) or 0.0
             ],
             "heightAverage": parse_decimal(row["heightAverage"]),
-            "address": str(row["address"]).strip() if not pd.isna(row["address"]) else ""
+            "address": str(row["address"]).strip() if not pd.isna(row["address"]) else "",
+            "district": str(row["district"]).strip() if not pd.isna(row["district"]) else ""
         }
 
     return stations
 
+def calculate_la_eq_category(laEq):
+    if laEq is None:
+        return "Sin dato"
+    if laEq >= 75:
+        return "Muy alto"
+    if laEq >= 65:
+        return "Alto"
+    if laEq >= 55:
+        return "Moderado"
+    return "Bajo"
 
 def transform_csv_to_ngsi(directory_path, file_path):
     df = read_csv_with_fallback(file_path)
@@ -117,7 +131,7 @@ def transform_csv_to_ngsi(directory_path, file_path):
     )
     stations_info = load_stations_info(static_data_path)
 
-    required_cols = ["NMT", "ANO", "MES", "DIA", "TIPO", "LAeq", "L1", "L10", "L50", "L90", "L99"]
+    required_cols = ["NMT", "ANO", "MES", "DIA", "TIPO", "LAEQ", "L1", "L10", "L50", "L90", "L99"]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Faltan columnas requeridas en el CSV: {missing}")
@@ -132,7 +146,8 @@ def transform_csv_to_ngsi(directory_path, file_path):
                 "name": f"Estación {station_id}",
                 "coords": [0.0, 0.0],
                 "heightAverage": None,
-                "address": ""
+                "address": "",
+                "district": ""
             }
         )
 
@@ -150,6 +165,10 @@ def transform_csv_to_ngsi(directory_path, file_path):
             minute=minute
         )
 
+        la_eq = parse_decimal(row.get("LAEQ"))
+        la_eq_category = calculate_la_eq_category(la_eq)
+        isd = calculate_isd_noiselevel(la_eq)
+
         entity = build_entity_from_template(
             ENTITY_TEMPLATE,
             {
@@ -159,7 +178,11 @@ def transform_csv_to_ngsi(directory_path, file_path):
                 "station_name": station_info["name"],
                 "address": station_info["address"],
                 "heightAverage": station_info["heightAverage"],
-                "source": SOURCE_URL
+                "district": station_info["district"],
+                "source": "Ayuntamiento de Madrid",
+                "laEq": la_eq,
+                "laEqCategory": la_eq_category,
+                "isd": isd
             }
         )
 

@@ -35,6 +35,19 @@
     "value": "{source}"
   },
 
+  "laEq": {
+    "type": "Number",
+    "value": "{laEq}",
+    "metadata": {
+      "unitCode": {"value": "dbA"}
+    }
+  },
+
+  "laEqCategory": {
+    "type": "Text",
+    "value": "{laEqCategory}"
+  },
+
   "district": {
     "type": "Text",
     "value": "{district}"
