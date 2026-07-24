@@ -7,6 +7,23 @@ TRANSPORT_BI_MAX_REFERENCE = 50
 NOISE_GOOD_THRESHOLD = 55
 NOISE_BAD_THRESHOLD = 75
 
+ISD_POR_NIVEL_ICA_AIRQUALITY = {
+    0: 1.0,   # Sin datos -> no se penaliza
+    1: 1.0,   # Buena
+    2: 0.8,   # Razonablemente buena
+    3: 0.6,   # Regular
+    4: 0.4,   # Desfavorable
+    5: 0.2,   # Muy desfavorable
+    6: 0.0,   # Extremadamente desfavorable
+}
+
+ISD_POR_NIVEL_ICA_WATERQUALITY = {
+    0: 1.0,   # Sin datos -> no se penaliza
+    1: 1.0,   # Buena
+    2: 0.5,   # Desfavorable
+    3: 0.0,   # Muy desfavorable
+}
+
 # ---- Energía ----
 
 def calculate_isd_energy(energy):
@@ -28,14 +45,7 @@ def calculate_isd_airquality(nivelIcaGeneral):
     except (TypeError, ValueError):
         return None
 
-    if nivel <= 1:
-        return 1.0
-
-    if nivel >= 6:
-        return 0.0
-
-    isd = (6 - nivel) / 5
-    return round(max(0.0, min(1.0, isd)), 4)
+    return ISD_POR_NIVEL_ICA_AIRQUALITY.get(nivel, 0.0)
 
 
 # ---- Flujo de personas ----
@@ -72,3 +82,13 @@ def calculate_isd_noiselevel(laEq):
     isd = (NOISE_BAD_THRESHOLD - laEq) / (NOISE_BAD_THRESHOLD - NOISE_GOOD_THRESHOLD)
 
     return round(max(0.0, min(1.0, isd)), 4)
+
+# ---- Calidad del agua ----
+
+def calculate_isd_waterquality(nivelIcaGeneral) -> float:
+    try:
+        nivel = int(nivelIcaGeneral)
+    except (TypeError, ValueError):
+        return None
+
+    return ISD_POR_NIVEL_ICA_WATERQUALITY.get(nivel, 0.0)

@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 from datetime import datetime
+from modules.common.isd_calculator import calculate_isd_waterquality
 
 from modules.common.entity_builder import (
     load_entity_template,
@@ -11,8 +12,6 @@ from modules.common.entity_builder import (
 ENTITY_TEMPLATE = load_entity_template(
     os.path.join(os.path.dirname(__file__), "entity.json")
 )
-
-SOURCE_URL = "https://datos.madrid.es/dataset/300146-0-depuradoras-vertido/downloads"
 
 MONTH_MAP = {
     "ene": 1,
@@ -34,6 +33,13 @@ PARAMETER_MAP = {
     "SS": "suspendedSolids",
     "PT": "totalPhosphorus",
     "NT": "totalNitrogen"
+}
+
+CATEGORIA_ICA_WATERQUALITY = {
+    0: "Sin datos",
+    1: "Buena",
+    2: "Desfavorable",
+    3: "Muy desfavorable",
 }
 
 def read_csv(file_path):
@@ -94,7 +100,7 @@ def parse_float(value):
 def load_stations_info(static_csv_path):
     df = read_csv(static_csv_path)
 
-    required_cols = ["id", "name", "lon", "lat"]
+    required_cols = ["id", "name", "lon", "lat", "districts"]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Faltan columnas requeridas en datos_estaticos.csv: {missing}")
@@ -109,7 +115,8 @@ def load_stations_info(static_csv_path):
             "location": [
                 parse_decimal(row["lon"]) or 0.0,
                 parse_decimal(row["lat"]) or 0.0
-            ]
+            ],
+            "districts": str(row["districts"]).strip() if not pd.isna(row["districts"]) else ""
         }
 
     return stations
@@ -167,6 +174,75 @@ def infer_year_from_filename(file_path):
         return int(match.group(1))
     return None
 
+def nivel_ica_biochemical_oxygen_demand5(value):
+    v = parse_float(value)
+    if v is None or v == 0:
+        return 0
+    if v <= 25:
+        return 1
+    if v <= 50:
+        return 2
+    return 3
+
+
+def nivel_ica_suspended_solids(value):
+    v = parse_float(value)
+    if v is None or v == 0:
+        return 0
+    if v <= 35:
+        return 1
+    if v <= 70:
+        return 2
+    return 3
+
+
+def nivel_ica_total_nitrogen(value):
+    v = parse_float(value)
+    if v is None or v == 0:
+        return 0
+    if v <= 15:
+        return 1
+    if v <= 30:
+        return 2
+    return 3
+
+
+def nivel_ica_total_phosphorus(value):
+    v = parse_float(value)
+    if v is None or v == 0:
+        return 0
+    if v <= 2:
+        return 1
+    if v <= 4:
+        return 2
+    return 3
+
+def categoria_ica_waterquality(nivel_ica):
+    return CATEGORIA_ICA_WATERQUALITY.get(nivel_ica)
+
+
+def calculate_niveles_ica(values: dict) -> dict:
+    nivel_dbo5 = nivel_ica_biochemical_oxygen_demand5(
+        values.get("biochemicalOxygenDemand5")
+    )
+    nivel_ss = nivel_ica_suspended_solids(values.get("suspendedSolids"))
+    nivel_nt = nivel_ica_total_nitrogen(values.get("totalNitrogen"))
+    nivel_pt = nivel_ica_total_phosphorus(values.get("totalPhosphorus"))
+
+    nivel_general = max(nivel_dbo5, nivel_ss, nivel_nt, nivel_pt)
+
+    return {
+        "nivelIcaBiochemicalOxygenDemand5": nivel_dbo5,
+        "nivelIcaSuspendedSolids": nivel_ss,
+        "nivelIcaTotalNitrogen": nivel_nt,
+        "nivelIcaTotalPhosphorus": nivel_pt,
+        "nivelIcaGeneral": nivel_general,
+        "categoriaIcaBiochemicalOxygenDemand5": categoria_ica_waterquality(nivel_dbo5),
+        "categoriaIcaSuspendedSolids": categoria_ica_waterquality(nivel_ss),
+        "categoriaIcaTotalNitrogen": categoria_ica_waterquality(nivel_nt),
+        "categoriaIcaTotalPhosphorus": categoria_ica_waterquality(nivel_pt),
+        "categoriaIcaGeneral": categoria_ica_waterquality(nivel_general),
+    }
 
 def transform_csv_to_ngsi(directory_path, file_path):
     df = read_csv(file_path)
@@ -200,12 +276,10 @@ def transform_csv_to_ngsi(directory_path, file_path):
             station_code,
             {
                 "stationName": f"EDAR {station_code}",
-                "location": [0.0, 0.0]
+                "location": [0.0, 0.0],
+                "districts": ""
             }
         )
-
-        station_name = station_info["stationName"]
-        location = station_info["location"]
 
         for period_col in period_columns:
             period_info = parse_period_column(period_col, default_year=detected_year)
@@ -220,16 +294,17 @@ def transform_csv_to_ngsi(directory_path, file_path):
             if entity_key not in grouped_entities:
                 grouped_entities[entity_key] = {
                     "entity_id": station_code,
-                    "name": station_name,
+                    "name": station_info["stationName"],
                     "dateObserved": period_info["dateObserved"],
                     "period": period_info["period"],
                     "fortnight": period_info["fortnight"],
-                    "source": SOURCE_URL,
-                    "coordinates": location,
+                    "source": "Ayuntamiento de Madrid",
+                    "coordinates": station_info["location"],
                     "biochemicalOxygenDemand5": 0,
                     "suspendedSolids": 0,
                     "totalPhosphorus": 0,
-                    "totalNitrogen": 0
+                    "totalNitrogen": 0,
+                    "districts": station_info["districts"]
                 }
 
             grouped_entities[entity_key][attribute_name] = numeric_value
@@ -237,6 +312,25 @@ def transform_csv_to_ngsi(directory_path, file_path):
     entities = []
 
     for _, payload in sorted(grouped_entities.items(), key=lambda x: x[0]):
+
+        indicadores_calidad = {
+            "biochemicalOxygenDemand5": payload.get("biochemicalOxygenDemand5"),
+            "suspendedSolids": payload.get("suspendedSolids"),
+            "totalNitrogen": payload.get("totalNitrogen"),
+            "totalPhosphorus": payload.get("totalPhosphorus"),
+        }
+
+        niveles_ica = calculate_niveles_ica(indicadores_calidad)
+
+        # El ISD (escala 0-1) se deriva del nivel_ica_general, con el mismo
+        # criterio de normalización lineal ya aplicado en el vertical de
+        # airquality: nivel <= 1 (Sin datos/Buena) -> ISD = 1.0,
+        # nivel = 3 (Muy desfavorable) -> ISD = 0.0.
+        isd_value = calculate_isd_waterquality(niveles_ica["nivelIcaGeneral"])
+
+        payload.update(niveles_ica)
+        payload["isd"] = isd_value
+
         entity = build_entity_from_template(
             ENTITY_TEMPLATE,
             payload

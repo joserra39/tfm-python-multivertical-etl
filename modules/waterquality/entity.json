@@ -55,9 +55,59 @@
     "value": "{totalNitrogen}"
   },
 
-  "district": {
+  "districts": {
     "type": "Text",
-    "value": "{district}"
+    "value": "{districts}"
+  },
+
+  "nivelIcaBiochemicalOxygenDemand5": {
+    "type": "Number",
+    "value": "{nivelIcaBiochemicalOxygenDemand5}"
+  },
+
+  "nivelIcaSuspendedSolids": {
+    "type": "Number",
+    "value": "{nivelIcaSuspendedSolids}"
+  },
+
+  "nivelIcaTotalPhosphorus": {
+    "type": "Number",
+    "value": "{nivelIcaTotalPhosphorus}"
+  },
+
+  "nivelIcaTotalNitrogen": {
+    "type": "Number",
+    "value": "{nivelIcaTotalNitrogen}"
+  },
+
+  "nivelIcaGeneral": {
+    "type": "Number",
+    "value": "{nivelIcaGeneral}"
+  },
+
+  "categoriaIcaBiochemicalOxygenDemand5": {
+    "type": "Text",
+    "value": "{categoriaIcaBiochemicalOxygenDemand5}"
+  },
+
+  "categoriaIcaSuspendedSolids": {
+    "type": "Text",
+    "value": "{categoriaIcaSuspendedSolids}"
+  },
+
+  "categoriaIcaTotalPhosphorus": {
+    "type": "Text",
+    "value": "{categoriaIcaTotalPhosphorus}"
+  },
+
+  "categoriaIcaTotalNitrogen": {
+    "type": "Text",
+    "value": "{categoriaIcaTotalNitrogen}"
+  },
+
+  "categoriaIcaGeneral": {
+    "type": "Text",
+    "value": "{categoriaIcaGeneral}"
   },
 
   "isd": {
